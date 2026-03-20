@@ -103,82 +103,194 @@ END $$;
 
 -- Step 7: Create RLS Policies
 -- Users table policies
-CREATE POLICY IF NOT EXISTS "Users can view own profile" ON users
-  FOR SELECT USING (auth.uid() = id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'users' AND policyname = 'Users can view own profile'
+  ) THEN
+    CREATE POLICY "Users can view own profile" ON users
+      FOR SELECT USING (auth.uid() = id);
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Admins and Super Admins can view all users" ON users
-  FOR SELECT USING (
-    auth.uid() IN (
-      SELECT id FROM users WHERE role IN ('admin', 'super_admin')
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'users' AND policyname = 'Admins and Super Admins can view all users'
+  ) THEN
+    CREATE POLICY "Admins and Super Admins can view all users" ON users
+      FOR SELECT USING (
+        auth.uid() IN (
+          SELECT id FROM users WHERE role IN ('admin', 'super_admin')
+        )
+      );
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Users can update own profile" ON users
-  FOR UPDATE USING (auth.uid() = id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'users' AND policyname = 'Users can update own profile'
+  ) THEN
+    CREATE POLICY "Users can update own profile" ON users
+      FOR UPDATE USING (auth.uid() = id);
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Super Admins can manage users" ON users
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM users 
-      WHERE id = auth.uid() AND role = 'super_admin'
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'users' AND policyname = 'Super Admins can manage users'
+  ) THEN
+    CREATE POLICY "Super Admins can manage users" ON users
+      FOR ALL USING (
+        EXISTS (
+          SELECT 1 FROM users 
+          WHERE id = auth.uid() AND role = 'super_admin'
+        )
+      );
+  END IF;
+END $$;
 
 -- Wallet policies
-CREATE POLICY IF NOT EXISTS "Users can view own wallet" ON wallets
-  FOR SELECT USING (user_id = auth.uid());
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'wallets' AND policyname = 'Users can view own wallet'
+  ) THEN
+    CREATE POLICY "Users can view own wallet" ON wallets
+      FOR SELECT USING (user_id = auth.uid());
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Admins and Super Admins can view all wallets" ON wallets
-  FOR SELECT USING (
-    auth.uid() IN (
-      SELECT id FROM users WHERE role IN ('admin', 'super_admin')
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'wallets' AND policyname = 'Admins and Super Admins can view all wallets'
+  ) THEN
+    CREATE POLICY "Admins and Super Admins can view all wallets" ON wallets
+      FOR SELECT USING (
+        auth.uid() IN (
+          SELECT id FROM users WHERE role IN ('admin', 'super_admin')
+        )
+      );
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Users can update own wallet" ON wallets
-  FOR UPDATE USING (user_id = auth.uid());
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'wallets' AND policyname = 'Users can update own wallet'
+  ) THEN
+    CREATE POLICY "Users can update own wallet" ON wallets
+      FOR UPDATE USING (user_id = auth.uid());
+  END IF;
+END $$;
 
 -- Transaction policies
-CREATE POLICY IF NOT EXISTS "Users can view own transactions" ON transactions
-  FOR SELECT USING (user_id = auth.uid());
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'transactions' AND policyname = 'Users can view own transactions'
+  ) THEN
+    CREATE POLICY "Users can view own transactions" ON transactions
+      FOR SELECT USING (user_id = auth.uid());
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Admins and Super Admins can view all transactions" ON transactions
-  FOR SELECT USING (
-    auth.uid() IN (
-      SELECT id FROM users WHERE role IN ('admin', 'super_admin')
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'transactions' AND policyname = 'Admins and Super Admins can view all transactions'
+  ) THEN
+    CREATE POLICY "Admins and Super Admins can view all transactions" ON transactions
+      FOR SELECT USING (
+        auth.uid() IN (
+          SELECT id FROM users WHERE role IN ('admin', 'super_admin')
+        )
+      );
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Super Admins can manage transactions" ON transactions
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM users 
-      WHERE id = auth.uid() AND role = 'super_admin'
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'transactions' AND policyname = 'Super Admins can manage transactions'
+  ) THEN
+    CREATE POLICY "Super Admins can manage transactions" ON transactions
+      FOR ALL USING (
+        EXISTS (
+          SELECT 1 FROM users 
+          WHERE id = auth.uid() AND role = 'super_admin'
+        )
+      );
+  END IF;
+END $$;
 
 -- Referral policies
-CREATE POLICY IF NOT EXISTS "Users can view own referrals" ON referrals
-  FOR SELECT USING (referrer_id = auth.uid());
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'referrals' AND policyname = 'Users can view own referrals'
+  ) THEN
+    CREATE POLICY "Users can view own referrals" ON referrals
+      FOR SELECT USING (referrer_id = auth.uid());
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Users can view referrals they received" ON referrals
-  FOR SELECT USING (referred_user_id = auth.uid());
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'referrals' AND policyname = 'Users can view referrals they received'
+  ) THEN
+    CREATE POLICY "Users can view referrals they received" ON referrals
+      FOR SELECT USING (referred_user_id = auth.uid());
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Admins and Super Admins can view all referrals" ON referrals
-  FOR SELECT USING (
-    auth.uid() IN (
-      SELECT id FROM users WHERE role IN ('admin', 'super_admin')
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'referrals' AND policyname = 'Admins and Super Admins can view all referrals'
+  ) THEN
+    CREATE POLICY "Admins and Super Admins can view all referrals" ON referrals
+      FOR SELECT USING (
+        auth.uid() IN (
+          SELECT id FROM users WHERE role IN ('admin', 'super_admin')
+        )
+      );
+  END IF;
+END $$;
 
 -- Webhook events policies
-CREATE POLICY IF NOT EXISTS "Super Admins can view webhook events" ON webhook_events
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM users 
-      WHERE id = auth.uid() AND role = 'super_admin'
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'webhook_events' AND policyname = 'Super Admins can view webhook events'
+  ) THEN
+    CREATE POLICY "Super Admins can view webhook events" ON webhook_events
+      FOR SELECT USING (
+        EXISTS (
+          SELECT 1 FROM users 
+          WHERE id = auth.uid() AND role = 'super_admin'
+        )
+      );
+  END IF;
+END $$;
 
 -- Step 8: Create trigger function for new users
 CREATE OR REPLACE FUNCTION public.handle_new_user()
