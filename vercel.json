@@ -1,0 +1,44 @@
+{
+  "version": 2,
+  "name": "veloxtopup",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
+      "src": "supabase/functions/*/index.ts",
+      "use": "@vercel/static-build",
+      "config": {
+        "functions": {
+          "supabase/functions/*/index.ts": {
+            "runtime": "nodejs18.x"
+          }
+        }
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/supabase/functions/$1/index.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "env": {
+    "VITE_SUPABASE_URL": "@supabase-url",
+    "VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY": "@supabase-anon-key",
+    "VITE_PAYSTACK_PUBLIC_KEY": "@paystack-public-key",
+    "PAYSTACK_SECRET_KEY": "@paystack-secret-key",
+    "GH_DATACONNECT_API_KEY": "@ghdataconnect-api-key",
+    "VITE_APP_NAME": "VeloxTopUp",
+    "VITE_APP_URL": "https://veloxtopup.shop"
+  },
+  "domains": ["veloxtopup.shop"]
+}
