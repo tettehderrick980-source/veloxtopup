@@ -31,7 +31,7 @@ export default function Navbar({ user }) {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2">
+            <Link to={user ? "/dashboard" : "/"} className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">V</span>
               </div>
@@ -41,14 +41,16 @@ export default function Navbar({ user }) {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            <Link
-              to="/"
-              className={`text-sm font-medium transition-colors ${
-                isActive('/') ? 'text-primary-400' : 'text-dark-300 hover:text-primary-400'
-              }`}
-            >
-              Home
-            </Link>
+            {!user && (
+              <Link
+                to="/"
+                className={`text-sm font-medium transition-colors ${
+                  isActive('/') ? 'text-primary-400' : 'text-dark-300 hover:text-primary-400'
+                }`}
+              >
+                Home
+              </Link>
+            )}
             {user && (
               <>
                 <Link
@@ -165,6 +167,7 @@ export default function Navbar({ user }) {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-dark-700">
             <div className="px-2 pt-2 pb-3 space-y-1">
+              {!user && (
               <Link
                 to="/"
                 className="block px-3 py-2 text-dark-300 hover:text-primary-400 hover:bg-dark-700 rounded-md"
@@ -172,6 +175,7 @@ export default function Navbar({ user }) {
               >
                 Home
               </Link>
+            )}
               {user && (
                 <>
                   <Link

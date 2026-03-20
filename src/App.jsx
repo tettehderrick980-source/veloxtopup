@@ -47,10 +47,10 @@ function App() {
           <Navbar user={user} />
           <main>
             <Routes>
-              <Route path="/" element={<LandingPage />} />
+              <Route path="/" element={user ? <Navigate to="/dashboard" /> : <LandingPage />} />
               <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/dashboard" />} />
               <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to="/dashboard" />} />
-              <Route path="/guest-checkout" element={<GuestCheckoutPage />} />
+              <Route path="/guest-checkout" element={!user ? <GuestCheckoutPage /> : <Navigate to="/dashboard" />} />
               <Route path="/dashboard" element={user ? <DashboardPage /> : <Navigate to="/login" />} />
               <Route path="/buy" element={user ? <BuyPage /> : <Navigate to="/login" />} />
               <Route path="/transactions" element={user ? <TransactionsPage /> : <Navigate to="/login" />} />
