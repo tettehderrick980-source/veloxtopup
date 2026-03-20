@@ -25,6 +25,11 @@ export default function DashboardPage() {
   }, [user]);
 
   const fetchDashboardData = async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       const [transactionsResult, referralsResult] = await Promise.all([
         db.getTransactions(user.id, 5),
@@ -44,7 +49,7 @@ export default function DashboardPage() {
   };
 
   const copyReferralLink = () => {
-    const referralLink = `${window.location.origin}/register?ref=${userProfile?.referral_code}`;
+    const referralLink = `${window.location.origin}/register?ref=${user?.user_metadata?.referral_code}`;
     navigator.clipboard.writeText(referralLink);
     alert('Referral link copied to clipboard!');
   };
