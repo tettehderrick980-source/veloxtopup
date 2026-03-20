@@ -36,7 +36,7 @@ const DATA_PLANS = {
 const AIRTIME_AMOUNTS = [5, 10, 20, 50, 100];
 
 export default function BuyForm() {
-  const { wallet, deductFromWallet } = useWallet();
+  const { user } = useAuth();
   const [type, setType] = useState('data'); // 'airtime' or 'data'
   const [selectedNetwork, setSelectedNetwork] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -151,9 +151,6 @@ export default function BuyForm() {
       setLoading(false);
     }
   };
-
-  // Add user prop from AuthContext
-  const { user } = useAuth();
 
   return (
     <div className="card max-w-2xl mx-auto">
