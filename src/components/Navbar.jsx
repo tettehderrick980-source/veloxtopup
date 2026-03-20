@@ -75,7 +75,7 @@ export default function Navbar({ user }) {
                 >
                   Transactions
                 </Link>
-                {userProfile?.role === 'admin' && (
+                {user?.user_metadata?.role === 'admin' && (
                   <Link
                     to="/admin"
                     className={`text-sm font-medium transition-colors ${
@@ -195,7 +195,7 @@ export default function Navbar({ user }) {
                   >
                     Transactions
                   </Link>
-                  {userProfile?.role === 'admin' && (
+                  {user?.user_metadata?.role === 'admin' && (
                     <Link
                       to="/admin"
                       className="block px-3 py-2 text-dark-300 hover:text-primary-400 hover:bg-dark-700 rounded-md"

@@ -90,7 +90,8 @@ export function AuthProvider({ children }) {
         options: {
           data: {
             phone
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/dashboard`
         }
       });
 
