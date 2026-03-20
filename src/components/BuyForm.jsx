@@ -77,7 +77,7 @@ export default function BuyForm() {
         phone: phoneNumber,
         plan: type === 'data' ? selectedPlan.name : `GH₵${totalAmount}`,
         amount: totalAmount,
-        status: 'pending_payment',
+        status: 'pending',
         reference: `VTU${Date.now()}`,
         created_at: new Date().toISOString()
       };
@@ -101,7 +101,7 @@ export default function BuyForm() {
           try {
             // Update transaction with payment reference
             await db.updateTransaction(transaction.id, {
-              status: 'paid',
+              status: 'processing',
               payment_reference: response.reference,
               updated_at: new Date().toISOString()
             });
