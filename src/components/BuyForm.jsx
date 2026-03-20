@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useWallet } from '../contexts/WalletContext';
+import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/supabase';
+import { paystackService } from '../services/paystack';
 
 const NETWORKS = [
   { id: 'mtn', name: 'MTN', color: 'bg-yellow-500' },
@@ -67,19 +68,16 @@ export default function BuyForm() {
       if (totalAmount <= 0) {
         throw new Error('Please select a plan or enter an amount');
       }
-      if (wallet.balance < totalAmount) {
-        throw new Error('Insufficient wallet balance');
-      }
 
-      // Create transaction record
+      // Create transaction record with pending status
       const transactionData = {
-        user_id: wallet.user_id,
+        user_id: user.id,
         type,
         network: selectedNetwork,
         phone: phoneNumber,
         plan: type === 'data' ? selectedPlan.name : `GH₵${totalAmount}`,
         amount: totalAmount,
-        status: 'pending',
+        status: 'pending_payment',
         reference: `VTU${Date.now()}`,
         created_at: new Date().toISOString()
       };
@@ -87,38 +85,75 @@ export default function BuyForm() {
       const { data: transaction, error: transactionError } = await db.createTransaction(transactionData);
       if (transactionError) throw transactionError;
 
-      // Deduct from wallet
-      const { success: deductSuccess, error: deductError } = await deductFromWallet(totalAmount);
-      if (!deductSuccess) throw deductError;
-
-      // Call Edge Function to process purchase
-      const { data, error } = await supabase.functions.invoke('purchase-data', {
-        body: {
-          transactionId: transaction.id,
-          type,
+      // Initialize Paystack payment
+      await paystackService.initializePayment({
+        email: user.email,
+        amount: totalAmount,
+        metadata: {
+          transaction_id: transaction.id,
+          user_id: user.id,
+          type: 'airtime_data_purchase',
           network: selectedNetwork,
-          phoneNumber,
-          plan: type === 'data' ? selectedPlan.name : null,
-          amount: totalAmount
+          phone: phoneNumber,
+          plan: type === 'data' ? selectedPlan.name : `GH₵${totalAmount}`
+        },
+        onSuccess: async (response) => {
+          try {
+            // Update transaction with payment reference
+            await db.updateTransaction(transaction.id, {
+              status: 'paid',
+              payment_reference: response.reference,
+              updated_at: new Date().toISOString()
+            });
+
+            setSuccess('Payment successful! Processing your purchase...');
+            
+            // Call Edge Function to process purchase
+            const { data, error } = await supabase.functions.invoke('purchase-data', {
+              body: {
+                transactionId: transaction.id,
+                type,
+                network: selectedNetwork,
+                phone: phoneNumber,
+                amount: totalAmount,
+                plan: type === 'data' ? selectedPlan : null
+              }
+            });
+
+            if (error) throw error;
+
+            setSuccess('Purchase completed successfully!');
+            // Reset form
+            setSelectedNetwork('');
+            setPhoneNumber('');
+            setCustomAmount('');
+            setSelectedPlan(null);
+            
+          } catch (error) {
+            console.error('Purchase processing error:', error);
+            setError('Payment received but purchase failed. Please contact support.');
+          }
+        },
+        onClose: () => {
+          // Update transaction as cancelled
+          db.updateTransaction(transaction.id, {
+            status: 'cancelled',
+            updated_at: new Date().toISOString()
+          });
+          setLoading(false);
         }
       });
 
-      if (error) throw error;
-
-      setSuccess('Purchase initiated successfully! You will receive confirmation shortly.');
-      
-      // Reset form
-      setSelectedNetwork('');
-      setPhoneNumber('');
-      setSelectedPlan('');
-      setCustomAmount('');
-
     } catch (error) {
-      setError(error.message);
+      console.error('Purchase error:', error);
+      setError(error.message || 'Purchase failed');
     } finally {
       setLoading(false);
     }
   };
+
+  // Add user prop from AuthContext
+  const { user } = useAuth();
 
   return (
     <div className="card max-w-2xl mx-auto">
@@ -281,9 +316,9 @@ export default function BuyForm() {
             </span>
           </div>
           <div className="flex justify-between items-center mt-2">
-            <span className="text-dark-400 text-sm">Wallet Balance:</span>
+            <span className="text-dark-400 text-sm">Payment Method:</span>
             <span className="text-dark-300">
-              GH₵{wallet?.balance?.toFixed(2) || '0.00'}
+              Paystack (Secure Payment)
             </span>
           </div>
         </div>
@@ -291,10 +326,10 @@ export default function BuyForm() {
         {/* Submit Button */}
         <button
           type="submit"
-          disabled={loading || totalAmount > wallet?.balance}
+          disabled={loading || totalAmount <= 0}
           className="btn-primary w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? 'Processing...' : 'Purchase Now'}
+          {loading ? 'Processing...' : 'Pay with Paystack'}
         </button>
       </form>
     </div>
