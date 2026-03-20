@@ -2,7 +2,7 @@
 -- Fresh start with all features we want to implement
 
 -- Step 1: Create users table
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id UUID REFERENCES auth.users(id) PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   phone TEXT,
@@ -14,7 +14,7 @@ CREATE TABLE users (
 );
 
 -- Step 2: Create wallets table
-CREATE TABLE wallets (
+CREATE TABLE IF NOT EXISTS wallets (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE UNIQUE NOT NULL,
   balance DECIMAL(10,2) DEFAULT 0.00,
@@ -23,7 +23,7 @@ CREATE TABLE wallets (
 );
 
 -- Step 3: Create transactions table
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS transactions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('airtime', 'data', 'wallet_funding', 'refund')),
@@ -40,7 +40,7 @@ CREATE TABLE transactions (
 );
 
 -- Step 4: Create referrals table
-CREATE TABLE referrals (
+CREATE TABLE IF NOT EXISTS referrals (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   referrer_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
   referred_user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
@@ -52,7 +52,7 @@ CREATE TABLE referrals (
 );
 
 -- Step 5: Create webhook_events table for logging
-CREATE TABLE webhook_events (
+CREATE TABLE IF NOT EXISTS webhook_events (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   source TEXT NOT NULL CHECK (source IN ('paystack', 'ghdataconnect')),
   event_type TEXT NOT NULL,
@@ -62,29 +62,61 @@ CREATE TABLE webhook_events (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Step 6: Enable Row Level Security
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE wallets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE webhook_events ENABLE ROW LEVEL SECURITY;
+-- Step 6: Enable Row Level Security (only if not already enabled)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'users'
+  ) THEN
+    ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'wallets'
+  ) THEN
+    ALTER TABLE wallets ENABLE ROW LEVEL SECURITY;
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'transactions'
+  ) THEN
+    ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'referrals'
+  ) THEN
+    ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'webhook_events'
+  ) THEN
+    ALTER TABLE webhook_events ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
 
 -- Step 7: Create RLS Policies
 -- Users table policies
-CREATE POLICY "Users can view own profile" ON users
+CREATE POLICY IF NOT EXISTS "Users can view own profile" ON users
   FOR SELECT USING (auth.uid() = id);
 
-CREATE POLICY "Admins and Super Admins can view all users" ON users
+CREATE POLICY IF NOT EXISTS "Admins and Super Admins can view all users" ON users
   FOR SELECT USING (
     auth.uid() IN (
       SELECT id FROM users WHERE role IN ('admin', 'super_admin')
     )
   );
 
-CREATE POLICY "Users can update own profile" ON users
+CREATE POLICY IF NOT EXISTS "Users can update own profile" ON users
   FOR UPDATE USING (auth.uid() = id);
 
-CREATE POLICY "Super Admins can manage users" ON users
+CREATE POLICY IF NOT EXISTS "Super Admins can manage users" ON users
   FOR ALL USING (
     EXISTS (
       SELECT 1 FROM users 
@@ -93,31 +125,31 @@ CREATE POLICY "Super Admins can manage users" ON users
   );
 
 -- Wallet policies
-CREATE POLICY "Users can view own wallet" ON wallets
+CREATE POLICY IF NOT EXISTS "Users can view own wallet" ON wallets
   FOR SELECT USING (user_id = auth.uid());
 
-CREATE POLICY "Admins and Super Admins can view all wallets" ON wallets
+CREATE POLICY IF NOT EXISTS "Admins and Super Admins can view all wallets" ON wallets
   FOR SELECT USING (
     auth.uid() IN (
       SELECT id FROM users WHERE role IN ('admin', 'super_admin')
     )
   );
 
-CREATE POLICY "Users can update own wallet" ON wallets
+CREATE POLICY IF NOT EXISTS "Users can update own wallet" ON wallets
   FOR UPDATE USING (user_id = auth.uid());
 
 -- Transaction policies
-CREATE POLICY "Users can view own transactions" ON transactions
+CREATE POLICY IF NOT EXISTS "Users can view own transactions" ON transactions
   FOR SELECT USING (user_id = auth.uid());
 
-CREATE POLICY "Admins and Super Admins can view all transactions" ON transactions
+CREATE POLICY IF NOT EXISTS "Admins and Super Admins can view all transactions" ON transactions
   FOR SELECT USING (
     auth.uid() IN (
       SELECT id FROM users WHERE role IN ('admin', 'super_admin')
     )
   );
 
-CREATE POLICY "Super Admins can manage transactions" ON transactions
+CREATE POLICY IF NOT EXISTS "Super Admins can manage transactions" ON transactions
   FOR ALL USING (
     EXISTS (
       SELECT 1 FROM users 
@@ -126,13 +158,13 @@ CREATE POLICY "Super Admins can manage transactions" ON transactions
   );
 
 -- Referral policies
-CREATE POLICY "Users can view own referrals" ON referrals
+CREATE POLICY IF NOT EXISTS "Users can view own referrals" ON referrals
   FOR SELECT USING (referrer_id = auth.uid());
 
-CREATE POLICY "Users can view referrals they received" ON referrals
+CREATE POLICY IF NOT EXISTS "Users can view referrals they received" ON referrals
   FOR SELECT USING (referred_user_id = auth.uid());
 
-CREATE POLICY "Admins and Super Admins can view all referrals" ON referrals
+CREATE POLICY IF NOT EXISTS "Admins and Super Admins can view all referrals" ON referrals
   FOR SELECT USING (
     auth.uid() IN (
       SELECT id FROM users WHERE role IN ('admin', 'super_admin')
@@ -140,7 +172,7 @@ CREATE POLICY "Admins and Super Admins can view all referrals" ON referrals
   );
 
 -- Webhook events policies
-CREATE POLICY "Super Admins can view webhook events" ON webhook_events
+CREATE POLICY IF NOT EXISTS "Super Admins can view webhook events" ON webhook_events
   FOR SELECT USING (
     EXISTS (
       SELECT 1 FROM users 
@@ -169,22 +201,30 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Step 9: Create trigger
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+-- Step 9: Create trigger (only if not exists)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.triggers 
+    WHERE trigger_name = 'on_auth_user_created'
+  ) THEN
+    CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+  END IF;
+END $$;
 
 -- Step 10: Create indexes for performance
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_role ON users(role);
-CREATE INDEX idx_users_referral_code ON users(referral_code);
-CREATE INDEX idx_wallets_user_id ON wallets(user_id);
-CREATE INDEX idx_transactions_user_id ON transactions(user_id);
-CREATE INDEX idx_transactions_status ON transactions(status);
-CREATE INDEX idx_transactions_reference ON transactions(reference);
-CREATE INDEX idx_referrals_referrer_id ON referrals(referrer_id);
-CREATE INDEX idx_referrals_referred_user_id ON referrals(referred_user_id);
-CREATE INDEX idx_webhook_events_source ON webhook_events(source);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
+CREATE INDEX IF NOT EXISTS idx_wallets_user_id ON wallets(user_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
+CREATE INDEX IF NOT EXISTS idx_transactions_reference ON transactions(reference);
+CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON referrals(referrer_id);
+CREATE INDEX IF NOT EXISTS idx_referrals_referred_user_id ON referrals(referred_user_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_source ON webhook_events(source);
 
 -- Step 11: Create default super admin
 -- Create super admin auth user with email confirmed
