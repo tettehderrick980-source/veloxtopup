@@ -77,14 +77,14 @@ export default function Navbar({ user }) {
                 >
                   Transactions
                 </Link>
-                {user?.user_metadata?.role === 'admin' && (
+                {(user?.user_metadata?.role === 'admin' || user?.user_metadata?.role === 'super_admin') && (
                   <Link
                     to="/admin"
                     className={`text-sm font-medium transition-colors ${
                       isActive('/admin') ? 'text-primary-400' : 'text-dark-300 hover:text-primary-400'
                     }`}
                   >
-                    Admin
+                    {user?.user_metadata?.role === 'super_admin' ? 'Super Admin' : 'Admin'}
                   </Link>
                 )}
               </>
@@ -199,15 +199,15 @@ export default function Navbar({ user }) {
                   >
                     Transactions
                   </Link>
-                  {user?.user_metadata?.role === 'admin' && (
-                    <Link
-                      to="/admin"
-                      className="block px-3 py-2 text-dark-300 hover:text-primary-400 hover:bg-dark-700 rounded-md"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Admin
-                    </Link>
-                  )}
+                  {(user?.user_metadata?.role === 'admin' || user?.user_metadata?.role === 'super_admin') && (
+                  <Link
+                    to="/admin"
+                    className="block px-3 py-2 text-dark-300 hover:text-primary-400 hover:bg-dark-700 rounded-md"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {user?.user_metadata?.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                  </Link>
+                )}
                 </>
               )}
             </div>

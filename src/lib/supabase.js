@@ -7,6 +7,71 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Database helper functions
 export const db = {
+  // Super Admin functions
+  async getAllUsers() {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    return { data, error }
+  },
+
+  async getAllTransactions() {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    return { data, error }
+  },
+
+  async getAllWallets() {
+    const { data, error } = await supabase
+      .from('wallets')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    return { data, error }
+  },
+
+  async updateUser(userId, updates) {
+    const { data, error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', userId)
+    
+    return { data, error }
+  },
+
+  async deleteUser(userId) {
+    const { data, error } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userId)
+    
+    return { data, error }
+  },
+
+  async updateTransaction(transactionId, updates) {
+    const { data, error } = await supabase
+      .from('transactions')
+      .update(updates)
+      .eq('id', transactionId)
+    
+    return { data, error }
+  },
+
+  async updateUserProfile(userId, updates) {
+    const { data, error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', userId)
+      .select()
+      .single()
+    return { data, error }
+  },
+
   // Users
   async getUserProfile(userId) {
     const { data, error } = await supabase
@@ -21,16 +86,6 @@ export const db = {
     const { data, error } = await supabase
       .from('users')
       .insert(userData)
-      .select()
-      .single()
-    return { data, error }
-  },
-
-  async updateUserProfile(userId, updates) {
-    const { data, error } = await supabase
-      .from('users')
-      .update(updates)
-      .eq('id', userId)
       .select()
       .single()
     return { data, error }

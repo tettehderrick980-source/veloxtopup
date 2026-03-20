@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage';
 import BuyPage from './pages/BuyPage';
 import TransactionsPage from './pages/TransactionsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import SuperAdminDashboardPage from './pages/SuperAdminDashboardPage';
 import GuestCheckoutPage from './pages/GuestCheckoutPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { WalletProvider } from './contexts/WalletContext';
@@ -54,7 +55,16 @@ function App() {
               <Route path="/dashboard" element={user ? <DashboardPage /> : <Navigate to="/login" />} />
               <Route path="/buy" element={user ? <BuyPage /> : <Navigate to="/login" />} />
               <Route path="/transactions" element={user ? <TransactionsPage /> : <Navigate to="/login" />} />
-              <Route path="/admin" element={user ? <AdminDashboardPage /> : <Navigate to="/login" />} />
+              <Route 
+                path="/admin" 
+                element={
+                  user ? (
+                    user?.user_metadata?.role === 'super_admin' ? 
+                    <SuperAdminDashboardPage /> : 
+                    <AdminDashboardPage />
+                  ) : <Navigate to="/login" />
+                } 
+              />
             </Routes>
           </main>
         </div>

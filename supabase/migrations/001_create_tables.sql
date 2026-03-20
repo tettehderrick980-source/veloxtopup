@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS users (
   id UUID REFERENCES auth.users(id) PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   phone TEXT,
-  role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+  role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin', 'super_admin')),
   referral_code TEXT UNIQUE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -81,11 +81,10 @@ ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own profile" ON users
   FOR SELECT USING (auth.uid() = id);
 
-CREATE POLICY "Admins can view all users" ON users
+CREATE POLICY "Admins and Super Admins can view all users" ON users
   FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM users 
-      WHERE id = auth.uid() AND role = 'admin'
+    auth.uid() IN (
+      SELECT id FROM users WHERE role IN ('admin', 'super_admin')
     )
   );
 
@@ -96,11 +95,10 @@ CREATE POLICY "Users can update own profile" ON users
 CREATE POLICY "Users can view own wallet" ON wallets
   FOR SELECT USING (user_id = auth.uid());
 
-CREATE POLICY "Admins can view all wallets" ON wallets
+CREATE POLICY "Admins and Super Admins can view all wallets" ON wallets
   FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM users 
-      WHERE id = auth.uid() AND role = 'admin'
+    auth.uid() IN (
+      SELECT id FROM users WHERE role IN ('admin', 'super_admin')
     )
   );
 
@@ -108,11 +106,10 @@ CREATE POLICY "Admins can view all wallets" ON wallets
 CREATE POLICY "Users can view own transactions" ON transactions
   FOR SELECT USING (user_id = auth.uid());
 
-CREATE POLICY "Admins can view all transactions" ON transactions
+CREATE POLICY "Admins and Super Admins can view all transactions" ON transactions
   FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM users 
-      WHERE id = auth.uid() AND role = 'admin'
+    auth.uid() IN (
+      SELECT id FROM users WHERE role IN ('admin', 'super_admin')
     )
   );
 
@@ -123,11 +120,10 @@ CREATE POLICY "Users can view own referrals" ON referrals
 CREATE POLICY "Users can view referrals they received" ON referrals
   FOR SELECT USING (referred_user_id = auth.uid());
 
-CREATE POLICY "Admins can view all referrals" ON referrals
+CREATE POLICY "Admins and Super Admins can view all referrals" ON referrals
   FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM users 
-      WHERE id = auth.uid() AND role = 'admin'
+    auth.uid() IN (
+      SELECT id FROM users WHERE role IN ('admin', 'super_admin')
     )
   );
 
