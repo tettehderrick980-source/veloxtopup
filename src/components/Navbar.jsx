@@ -3,8 +3,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useWallet } from '../contexts/WalletContext';
 import { 
-  MenuIcon, 
-  XIcon, 
+  Bars3Icon, 
+  XMarkIcon,
   UserIcon, 
   CreditCardIcon,
   ChartBarIcon,
@@ -153,9 +153,9 @@ export default function Navbar({ user }) {
               className="text-dark-300 hover:text-primary-400"
             >
               {mobileMenuOpen ? (
-                <XIcon className="w-6 h-6" />
+                <XMarkIcon className="w-6 h-6" />
               ) : (
-                <MenuIcon className="w-6 h-6" />
+                <Bars3Icon className="w-6 h-6" />
               )}
             </button>
           </div>

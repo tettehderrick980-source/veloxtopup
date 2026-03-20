@@ -8,24 +8,9 @@
       "config": {
         "distDir": "dist"
       }
-    },
-    {
-      "src": "supabase/functions/*/index.ts",
-      "use": "@vercel/static-build",
-      "config": {
-        "functions": {
-          "supabase/functions/*/index.ts": {
-            "runtime": "nodejs18.x"
-          }
-        }
-      }
     }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/supabase/functions/$1/index.ts"
-    },
     {
       "src": "/(.*)",
       "dest": "/index.html"
@@ -40,5 +25,8 @@
     "VITE_APP_NAME": "VeloxTopUp",
     "VITE_APP_URL": "https://veloxtopup.shop"
   },
-  "domains": ["veloxtopup.shop"]
+  "domains": ["veloxtopup.shop"],
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install"
 }
