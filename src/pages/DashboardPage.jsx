@@ -50,8 +50,48 @@ export default function DashboardPage() {
 
   const copyReferralLink = () => {
     const referralLink = `${window.location.origin}/register?ref=${user?.user_metadata?.referral_code}`;
-    navigator.clipboard.writeText(referralLink);
-    alert('Referral link copied to clipboard!');
+    
+    // Try modern clipboard API first
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(referralLink)
+        .then(() => {
+          alert('Referral link copied to clipboard!');
+        })
+        .catch(() => {
+          // Fallback to older method
+          fallbackCopyTextToClipboard(referralLink);
+        });
+    } else {
+      // Fallback for older browsers
+      fallbackCopyTextToClipboard(referralLink);
+    }
+  };
+
+  const fallbackCopyTextToClipboard = (text) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    
+    // Avoid scrolling to bottom
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+      const successful = document.execCommand('copy');
+      if (successful) {
+        alert('Referral link copied to clipboard!');
+      } else {
+        alert('Please copy this link manually: ' + text);
+      }
+    } catch (err) {
+      alert('Please copy this link manually: ' + text);
+    }
+
+    document.body.removeChild(textArea);
   };
 
   const stats = [
