@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <title>Offline - VeloxTopUp</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .container {
+      text-align: center;
+      max-width: 400px;
+    }
+    .logo {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 2rem;
+      background: linear-gradient(135deg, #3b82f6, #60a5fa);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: auto;
+      margin-right: auto;
+      font-size: 2rem;
+      font-weight: bold;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #f8fafc;
+    }
+    p {
+      color: #94a3b8;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+    .icon {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 1.5rem;
+      opacity: 0.5;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 0.75rem 2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    .features {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid #334155;
+    }
+    .features h2 {
+      font-size: 1rem;
+      color: #64748b;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .feature-list {
+      list-style: none;
+      text-align: left;
+    }
+    .feature-list li {
+      color: #94a3b8;
+      padding: 0.5rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .feature-list li::before {
+      content: "✓";
+      color: #22c55e;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">V</div>
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+      <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+      <line x1="12" y1="20" x2="12.01" y2="20"></line>
+    </svg>
+    <h1>You're Offline</h1>
+    <p>It looks like you've lost your internet connection. Some features may be unavailable until you're back online.</p>
+    <button onclick="window.location.reload()">Try Again</button>
+    
+    <div class="features">
+      <h2>Available Offline</h2>
+      <ul class="feature-list">
+        <li>View your order history</li>
+        <li>Check wallet balance</li>
+        <li>Browse data bundle prices</li>
+        <li>Access referral information</li>
+      </ul>
+    </div>
+  </div>
+  <script>
+    // Check if we're back online
+    window.addEventListener('online', () => {
+      window.location.href = '/';
+    });
+    
+    // Check if we were online all along
+    if (navigator.onLine) {
+      window.location.href = '/';
+    }
+  </script>
+</body>
+</html>

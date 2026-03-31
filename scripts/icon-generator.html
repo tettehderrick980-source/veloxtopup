@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VeloxTopUp PWA Icon Generator</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    h1 {
+      margin-bottom: 1rem;
+      color: #60a5fa;
+    }
+    .container {
+      max-width: 800px;
+      width: 100%;
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 2rem;
+    }
+    .upload-section {
+      border: 2px dashed #3b82f6;
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      margin-bottom: 2rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .upload-section:hover {
+      background: rgba(59, 130, 246, 0.1);
+      border-color: #60a5fa;
+    }
+    .upload-section input {
+      display: none;
+    }
+    .preview {
+      margin-top: 2rem;
+    }
+    .size-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .icon-item {
+      background: #334155;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .icon-item img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+    .icon-item .size-label {
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+      color: #94a3b8;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      margin-top: 1rem;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    button:disabled {
+      background: #475569;
+      cursor: not-allowed;
+    }
+    .instructions {
+      margin-top: 2rem;
+      padding: 1rem;
+      background: #334155;
+      border-radius: 8px;
+    }
+    .instructions h3 {
+      margin-bottom: 0.5rem;
+      color: #60a5fa;
+    }
+    .instructions ul {
+      margin-left: 1.5rem;
+      color: #94a3b8;
+    }
+    .instructions li {
+      margin: 0.25rem 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>VeloxTopUp PWA Icon Generator</h1>
+  <div class="container">
+    <div class="upload-section" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" accept="image/*" onchange="handleFile(event)">
+      <p>Click to upload your logo or drag and drop</p>
+      <p style="color: #64748b; font-size: 0.875rem; margin-top: 0.5rem;">Recommended: Square PNG with transparent background</p>
+    </div>
+
+    <div id="preview" class="preview" style="display: none;">
+      <h2>Generated Icons</h2>
+      <div class="size-grid" id="sizeGrid"></div>
+      <button onclick="downloadAll()" id="downloadBtn">Download All Icons</button>
+    </div>
+
+    <div class="instructions">
+      <h3>Instructions</h3>
+      <ul>
+        <li>Upload your logo (preferably 512x512 or larger)</li>
+        <li>The tool will generate all required PWA icon sizes</li>
+        <li>Click "Download All Icons" to save as ZIP</li>
+        <li>Extract the icons to your <code>public/icons/</code> folder</li>
+        <li>Build and deploy your app</li>
+      </ul>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script>
+    const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+    let generatedIcons = {};
+
+    function handleFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const img = new Image();
+      img.onload = function() {
+        generateIcons(img);
+      };
+      img.src = URL.createObjectURL(file);
+    }
+
+    function generateIcons(sourceImg) {
+      const grid = document.getElementById('sizeGrid');
+      grid.innerHTML = '';
+      generatedIcons = {};
+
+      sizes.forEach(size => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // Fill background
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, size, size);
+
+        // Draw image centered with padding
+        const padding = size * 0.1;
+        const drawSize = size - (padding * 2);
+        ctx.drawImage(sourceImg, padding, padding, drawSize, drawSize);
+
+        // Store for download
+        generatedIcons[`icon-${size}x${size}.png`] = canvas.toDataURL('image/png');
+
+        // Create preview
+        const item = document.createElement('div');
+        item.className = 'icon-item';
+        item.innerHTML = `
+          <img src="${canvas.toDataURL('image/png')}" alt="${size}x${size}">
+          <div class="size-label">${size}x${size}</div>
+        `;
+        grid.appendChild(item);
+      });
+
+      // Generate maskable versions
+      [192, 512].forEach(size => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        const padding = size * 0.15;
+        const drawSize = size - (padding * 2);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, size, size);
+        ctx.drawImage(sourceImg, padding, padding, drawSize, drawSize);
+
+        generatedIcons[`maskable-icon-${size}x${size}.png`] = canvas.toDataURL('image/png');
+      });
+
+      document.getElementById('preview').style.display = 'block';
+    }
+
+    async function downloadAll() {
+      const btn = document.getElementById('downloadBtn');
+      btn.disabled = true;
+      btn.textContent = 'Creating ZIP...';
+
+      const zip = new JSZip();
+      
+      for (const [filename, dataUrl] of Object.entries(generatedIcons)) {
+        const base64Data = dataUrl.split(',')[1];
+        zip.file(filename, base64Data, { base64: true });
+      }
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'veloxtopup-pwa-icons.zip';
+      a.click();
+      
+      URL.revokeObjectURL(url);
+      
+      btn.disabled = false;
+      btn.textContent = 'Download All Icons';
+    }
+  </script>
+</body>
+</html>

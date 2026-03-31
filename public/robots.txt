@@ -1,0 +1,38 @@
+# Robots.txt for VeloxTopUp
+# https://veloxtopup.shop
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://veloxtopup.shop/sitemap.xml
+
+# Disallow admin and protected routes
+Disallow: /admin/
+Disallow: /api/
+Disallow: /super-admin/
+Disallow: /_next/
+Disallow: /*.json$
+Disallow: /*.map$
+
+# Allow search engines to crawl public pages
+Allow: /buy
+Allow: /login
+Allow: /register
+Allow: /dashboard
+Allow: /transactions
+Allow: /pricing
+Allow: /about
+Allow: /contact
+
+# Crawl delay (optional - be nice to search engines)
+Crawl-delay: 1
+
+# Specific bot rules
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
