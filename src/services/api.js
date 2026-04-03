@@ -30,7 +30,9 @@ class APIClient {
       throw new Error('API_BASE_URL is not configured. Please set VITE_API_BASE_URL in your environment.');
     }
     
-    const url = `${this.baseURL}${endpoint}`;
+    // Ensure endpoint starts with /api/v1 if not already included
+    const apiPath = endpoint.startsWith('/api/') ? endpoint : `/api/v1${endpoint}`;
+    const url = `${this.baseURL}${apiPath}`;
     
     try {
       const response = await fetch(url, {
