@@ -84,7 +84,17 @@ self.addEventListener('fetch', (event) => {
     url.pathname.match(/^\/index-[a-zA-Z0-9]+\.js$/);
 
   if (shouldSkipCache) {
-    event.respondWith(fetch(request));
+    event.respondWith(
+      fetch(request).catch((error) => {
+        console.log('[SW] Network fetch failed for:', request.url);
+        // Return offline page for navigation requests
+        if (request.mode === 'navigate') {
+          return caches.match('/offline.html');
+        }
+        // Return error response for other requests
+        return new Response('Network error - content not available', { status: 503 });
+      })
+    );
     return;
   }
 
