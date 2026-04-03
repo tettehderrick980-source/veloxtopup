@@ -22,6 +22,8 @@ const startServer = async () => {
     const { connectDatabase } = await import('./src/config/database.js');
     const { errorHandler } = await import('./src/middleware/errorHandler.js');
     const { requestLogger } = await import('./src/middleware/requestLogger.js');
+    const { apiKeyAuth } = await import('./src/middleware/apiKeyAuth.js');
+    const { usageTracker } = await import('./src/middleware/usageTracker.js');
 
     // Import routes
     const { default: authRoutes } = await import('./src/routes/auth.js');
@@ -33,7 +35,7 @@ const startServer = async () => {
 
     const app = express();
     const server = createServer(app);
-    const PORT = process.env.PORT || 3001;
+    const PORT = process.env.PORT || 5000;
     const apiVersion = process.env.API_VERSION || 'v1';
 
     // Security middleware
@@ -48,27 +50,13 @@ const startServer = async () => {
       },
     }));
 
-    // CORS configuration
-    const corsOptions = {
-      origin: function (origin, callback) {
-        const allowedOrigins = [
-          process.env.CORS_ORIGIN || 'http://localhost:3000',
-          process.env.CORS_ORIGIN_PROD || 'https://veloxtopup.shop',
-          'http://localhost:5173',
-        ];
-        
-        if (!origin || allowedOrigins.includes(origin)) {
-          callback(null, true);
-        } else {
-          callback(new Error('Not allowed by CORS'));
-        }
-      },
+    // CORS configuration for Render deployment
+    app.use(cors({
+      origin: process.env.CORS_ORIGIN || '*',
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    };
-
-    app.use(cors(corsOptions));
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-User-Id', 'x-api-key'],
+    }));
 
     // Rate limiting
     const limiter = rateLimit({
@@ -102,13 +90,13 @@ const startServer = async () => {
       });
     });
 
-    // API routes
-    app.use(`/api/${apiVersion}/auth`, authRoutes);
-    app.use(`/api/${apiVersion}/purchases`, purchaseRoutes);
-    app.use(`/api/${apiVersion}/transactions`, transactionRoutes);
-    app.use(`/api/${apiVersion}/webhooks`, webhookRoutes);
-    app.use(`/api/${apiVersion}/admin`, adminRoutes);
-    app.use(`/api/${apiVersion}/users`, userRoutes);
+    // API routes with authentication and usage tracking
+    app.use(`/api/${apiVersion}/auth`, usageTracker, authRoutes);
+    app.use(`/api/${apiVersion}/purchases`, apiKeyAuth, usageTracker, purchaseRoutes);
+    app.use(`/api/${apiVersion}/transactions`, apiKeyAuth, usageTracker, transactionRoutes);
+    app.use(`/api/${apiVersion}/webhooks`, usageTracker, webhookRoutes);
+    app.use(`/api/${apiVersion}/admin`, apiKeyAuth, usageTracker, adminRoutes);
+    app.use(`/api/${apiVersion}/users`, apiKeyAuth, usageTracker, userRoutes);
 
     // API documentation endpoint
     app.get('/api', (req, res) => {

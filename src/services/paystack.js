@@ -1,4 +1,5 @@
 import PaystackPop from '@paystack/inline-js'
+import { apiClient } from './api'
 
 export class PaystackService {
   constructor() {
@@ -12,7 +13,7 @@ export class PaystackService {
       const options = {
         key: this.publicKey,
         email,
-        amount: amount * 100, // Convert to kobo
+        amount: amount * 100,
         currency: 'GHS',
         metadata: {
           ...metadata,
@@ -41,24 +42,8 @@ export class PaystackService {
 
   async verifyPayment(reference) {
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-      const response = await fetch(`${supabaseUrl}/functions/v1/verify-paystack-payment`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ reference })
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Payment verification failed')
-      }
-
-      return data
+      const response = await apiClient.post('/payments/verify', { reference })
+      return response
     } catch (error) {
       console.error('Payment verification error:', error)
       throw error

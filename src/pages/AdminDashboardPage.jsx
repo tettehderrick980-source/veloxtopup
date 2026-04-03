@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/supabase';
-import { purchaseAPI } from '../services/api';
+import { purchaseAPI, apiClient } from '../services/api';
 import { RefundModal } from '../components/RefundModal';
 import { RetryModal } from '../components/RetryModal';
 import { useNotification } from '../contexts/NotificationContext';
@@ -157,21 +157,17 @@ export default function AdminDashboardPage() {
       
       if (dbError) throw dbError;
       
-      // Call API to retry
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/purchases`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transactionId: retryData.transactionId,
-          network: retryData.network,
-          phone: retryData.phone,
-          capacity: retryData.capacity,
-          cost_price: retryData.amount * 0.95,
-          selling_price: retryData.amount,
-          reference: `retry-${Date.now()}`,
-          is_retry: true,
-          retry_count: retryData.previousAttempts
-        })
+      // Call API to retry using central apiClient
+      await apiClient.post('/purchases', {
+        transactionId: retryData.transactionId,
+        network: retryData.network,
+        phone: retryData.phone,
+        capacity: retryData.capacity,
+        cost_price: retryData.amount * 0.95,
+        selling_price: retryData.amount,
+        reference: `retry-${Date.now()}`,
+        is_retry: true,
+        retry_count: retryData.previousAttempts
       });
       
       if (!response.ok) {

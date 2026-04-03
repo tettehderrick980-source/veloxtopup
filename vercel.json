@@ -1,29 +1,5 @@
 {
-  "version": 2,
-  "name": "veloxtopup",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
   "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ],
-  "env": {
-    "VITE_SUPABASE_URL": "@supabase-url",
-    "VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY": "@supabase-anon-key",
-    "VITE_PAYSTACK_PUBLIC_KEY": "@paystack-public-key",
-    "VITE_APP_NAME": "VeloxTopUp",
-    "VITE_APP_URL": "https://veloxtopup.shop"
-  },
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "installCommand": "npm install"
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
