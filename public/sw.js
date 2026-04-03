@@ -85,13 +85,39 @@ self.addEventListener('fetch', (event) => {
 
   if (shouldSkipCache) {
     event.respondWith(
-      fetch(request).catch((error) => {
-        console.log('[SW] Network fetch failed for:', request.url);
-        // Return offline page for navigation requests
-        if (request.mode === 'navigate') {
-          return caches.match('/offline.html');
+      fetch(request).catch(async (error) => {
+        console.log('[SW] Network fetch failed for:', request.url, error.message);
+        
+        // Check if this is a navigation request (page load)
+        const isNavigation = request.mode === 'navigate' || 
+                              request.destination === 'document' ||
+                              (request.headers.get('accept') || '').includes('text/html');
+        
+        if (isNavigation) {
+          // Try to return cached offline page
+          const offlineResponse = await caches.match('/offline.html');
+          if (offlineResponse) {
+            return offlineResponse;
+          }
+          // If no offline page, return a simple HTML response
+          return new Response(
+            `<!DOCTYPE html>
+            <html>
+            <head><title>Offline - VeloxTopUp</title></head>
+            <body style="font-family: Arial; text-align: center; padding: 50px;">
+              <h1>You are offline</h1>
+              <p>Please check your internet connection and try again.</p>
+              <button onclick="location.reload()">Retry</button>
+            </body>
+            </html>`,
+            { 
+              status: 503, 
+              headers: { 'Content-Type': 'text/html' }
+            }
+          );
         }
-        // Return error response for other requests
+        
+        // For non-navigation requests, return error response
         return new Response('Network error - content not available', { status: 503 });
       })
     );
