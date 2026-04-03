@@ -37,22 +37,6 @@
       "purpose": "maskable any"
     }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshots/home-screen.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Home Screen of VeloxTopUp"
-    },
-    {
-      "src": "/screenshots/mobile-screen.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Mobile View of VeloxTopUp"
-    }
-  ],
   "shortcuts": [
     {
       "name": "Buy Data",
