@@ -11,8 +11,6 @@ const IMAGE_CACHE = 'veloxtopup-images-v1';
 
 // Precache essential static assets
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/offline.html',
   '/manifest.json',
   '/Velox-Logo.png',
@@ -76,6 +74,17 @@ self.addEventListener('fetch', (event) => {
 
   // Skip non-GET requests and non-http(s) protocols
   if (request.method !== 'GET' || !url.protocol.startsWith('http')) {
+    return;
+  }
+
+  // NEVER cache index.html or main JS bundles (ensure latest version is always loaded)
+  const shouldSkipCache = 
+    url.pathname === '/' || 
+    url.pathname === '/index.html' ||
+    url.pathname.match(/^\/index-[a-zA-Z0-9]+\.js$/);
+
+  if (shouldSkipCache) {
+    event.respondWith(fetch(request));
     return;
   }
 

@@ -5,6 +5,11 @@ import App from './App.jsx'
 import './index.css'
 import { registerServiceWorker, initInstallPrompt } from './registerSW.js'
 
+// Force HTTPS in production
+if (location.protocol !== 'https:') {
+  location.replace(`https://${location.host}${location.pathname}`);
+}
+
 // Suppress harmless Paystack SDK warnings
 const originalWarn = console.warn
 console.warn = (...args) => {
