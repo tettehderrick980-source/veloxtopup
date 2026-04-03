@@ -164,26 +164,43 @@ async function cacheFirst(request, cacheName) {
 async function staleWhileRevalidate(request) {
   const cachedResponse = await caches.match(request);
   
-  const fetchPromise = fetch(request)
-    .then(async (networkResponse) => {
-      if (networkResponse && networkResponse.ok) {
-        // Clone the response before reading it
-        const responseToCache = networkResponse.clone();
-        const cache = await caches.open(DYNAMIC_CACHE);
-        await cache.put(request, responseToCache);
-      }
-      return networkResponse;
-    })
-    .catch((error) => {
-      console.log('[SW] Background fetch failed:', request.url, error);
-      // Return offline page for HTML requests
-      if (request.mode === 'navigate') {
-        return caches.match('/offline.html');
-      }
-      throw error;
-    });
-
-  return cachedResponse || fetchPromise;
+  // If we have a cached response, return it immediately
+  // and update cache in background
+  if (cachedResponse) {
+    // Update cache in background (don't await)
+    fetch(request)
+      .then(async (networkResponse) => {
+        if (networkResponse && networkResponse.ok) {
+          const responseToCache = networkResponse.clone();
+          const cache = await caches.open(DYNAMIC_CACHE);
+          await cache.put(request, responseToCache);
+        }
+      })
+      .catch((error) => {
+        console.log('[SW] Background fetch failed (using cache):', request.url);
+      });
+    
+    return cachedResponse;
+  }
+  
+  // No cache - must fetch from network
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse && networkResponse.ok) {
+      const responseToCache = networkResponse.clone();
+      const cache = await caches.open(DYNAMIC_CACHE);
+      await cache.put(request, responseToCache);
+    }
+    return networkResponse;
+  } catch (error) {
+    console.log('[SW] Fetch failed, no cache available:', request.url, error);
+    // Return offline page for HTML requests
+    if (request.mode === 'navigate') {
+      return caches.match('/offline.html');
+    }
+    // Return a simple error response for other requests
+    return new Response('Offline - content not available', { status: 503 });
+  }
 }
 
 /**
