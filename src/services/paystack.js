@@ -8,6 +8,17 @@ export class PaystackService {
 
   async initializePayment({ email, amount, metadata = {}, onSuccess, onClose }) {
     try {
+      // Validate required fields
+      if (!this.publicKey) {
+        throw new Error('Paystack public key is not configured. Please set VITE_PAYSTACK_PUBLIC_KEY.');
+      }
+      if (!email) {
+        throw new Error('Email is required for payment.');
+      }
+      if (!amount || amount <= 0) {
+        throw new Error('Valid amount is required for payment.');
+      }
+
       const paystack = new PaystackPop()
       
       const options = {
@@ -35,7 +46,7 @@ export class PaystackService {
 
       paystack.newTransaction(options)
     } catch (error) {
-      console.error('Paystack payment error:', error)
+      console.error('Paystack payment error:', error.message || error)
       throw error
     }
   }
