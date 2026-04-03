@@ -165,20 +165,22 @@ async function staleWhileRevalidate(request) {
   const cachedResponse = await caches.match(request);
   
   const fetchPromise = fetch(request)
-    .then((networkResponse) => {
-      if (networkResponse.ok) {
-        const cache = caches.open(DYNAMIC_CACHE).then((cache) => {
-          cache.put(request, networkResponse.clone());
-        });
+    .then(async (networkResponse) => {
+      if (networkResponse && networkResponse.ok) {
+        // Clone the response before reading it
+        const responseToCache = networkResponse.clone();
+        const cache = await caches.open(DYNAMIC_CACHE);
+        await cache.put(request, responseToCache);
       }
       return networkResponse;
     })
     .catch((error) => {
-      console.log('[SW] Background fetch failed:', request.url);
+      console.log('[SW] Background fetch failed:', request.url, error);
       // Return offline page for HTML requests
       if (request.mode === 'navigate') {
         return caches.match('/offline.html');
       }
+      throw error;
     });
 
   return cachedResponse || fetchPromise;
