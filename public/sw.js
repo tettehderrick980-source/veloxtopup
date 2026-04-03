@@ -77,53 +77,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // NEVER cache index.html or main JS bundles (ensure latest version is always loaded)
-  const shouldSkipCache = 
-    url.pathname === '/' || 
-    url.pathname === '/index.html' ||
-    url.pathname.match(/^\/index-[a-zA-Z0-9]+\.js$/);
-
-  if (shouldSkipCache) {
-    event.respondWith(
-      fetch(request).catch(async (error) => {
-        console.log('[SW] Network fetch failed for:', request.url, error.message);
-        
-        // Check if this is a navigation request (page load)
-        const isNavigation = request.mode === 'navigate' || 
-                              request.destination === 'document' ||
-                              (request.headers.get('accept') || '').includes('text/html');
-        
-        if (isNavigation) {
-          // Try to return cached offline page
-          const offlineResponse = await caches.match('/offline.html');
-          if (offlineResponse) {
-            return offlineResponse;
-          }
-          // If no offline page, return a simple HTML response
-          return new Response(
-            `<!DOCTYPE html>
-            <html>
-            <head><title>Offline - VeloxTopUp</title></head>
-            <body style="font-family: Arial; text-align: center; padding: 50px;">
-              <h1>You are offline</h1>
-              <p>Please check your internet connection and try again.</p>
-              <button onclick="location.reload()">Retry</button>
-            </body>
-            </html>`,
-            { 
-              status: 503, 
-              headers: { 'Content-Type': 'text/html' }
-            }
-          );
-        }
-        
-        // For non-navigation requests, return error response
-        return new Response('Network error - content not available', { status: 503 });
-      })
-    );
-    return;
-  }
-
   // Strategy for API requests (network first, cache fallback)
   if (url.pathname.startsWith('/api/') || url.pathname.includes('supabase')) {
     event.respondWith(networkFirst(request));
@@ -142,7 +95,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy for pages and dynamic content (stale-while-revalidate)
+  // Strategy for pages and HTML requests (stale-while-revalidate)
+  // This caches index.html but updates in background for fresh content
   event.respondWith(staleWhileRevalidate(request));
 });
 
