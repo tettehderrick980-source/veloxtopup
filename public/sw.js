@@ -4,7 +4,7 @@
  * @version 1.0.0
  */
 
-const CACHE_NAME = 'veloxtopup-v1';
+const CACHE_NAME = 'veloxtopup-v2';
 const STATIC_CACHE = 'veloxtopup-static-v1';
 const DYNAMIC_CACHE = 'veloxtopup-dynamic-v1';
 const IMAGE_CACHE = 'veloxtopup-images-v1';
