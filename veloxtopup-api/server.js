@@ -38,6 +38,9 @@ const startServer = async () => {
     const PORT = process.env.PORT || 5000;
     const apiVersion = process.env.API_VERSION || 'v1';
 
+    // Trust proxy for Render deployment
+    app.set('trust proxy', 1);
+
     // Security middleware
     app.use(helmet({
       contentSecurityPolicy: {

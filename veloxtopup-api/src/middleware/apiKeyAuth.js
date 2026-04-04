@@ -11,7 +11,14 @@ export const apiKeyAuth = async (req, res, next) => {
   }
 
   try {
-    // Validate API key from database
+    // Check environment variable first (for frontend API key)
+    const envApiKey = process.env.API_KEY;
+    if (envApiKey && apiKey === envApiKey) {
+      req.apiKey = { api_key: apiKey, source: 'environment' };
+      return next();
+    }
+
+    // Fallback to database validation
     const { data: keyData, error } = await db.supabase
       .from('api_keys')
       .select('*')
