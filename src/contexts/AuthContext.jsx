@@ -13,15 +13,36 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
-      } else {
+    // Timeout to prevent infinite loading
+    const loadingTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn('[Auth] Loading timeout reached, forcing loading to false');
         setLoading(false);
       }
-    });
+    }, 5000); // 5 second max loading time
+
+    // Get initial session
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) {
+          console.error('[Auth] getSession error:', error);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+        
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchUserProfile(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((error) => {
+        console.error('[Auth] getSession exception:', error);
+        setUser(null);
+        setLoading(false);
+      });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -34,7 +55,10 @@ export function AuthProvider({ children }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(loadingTimeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchUserProfile = async (userId) => {
@@ -65,8 +89,10 @@ export function AuthProvider({ children }) {
           } else {
             console.error('Error creating user profile:', createError);
           }
+          setLoading(false); // Always set loading false after handling create error
         } else {
           setUserProfile(newProfile);
+          setLoading(false); // Always set loading false after handling create error
           // Try to create wallet (may fail if already exists)
           await db.createWallet(userId).catch(() => {});
         }
