@@ -1,4 +1,5 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_KEY = import.meta.env.VITE_API_KEY;
 
 class APIClient {
   constructor() {
@@ -7,6 +8,11 @@ class APIClient {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
+    
+    // Add API key header if available
+    if (API_KEY) {
+      this.headers['x-api-key'] = API_KEY;
+    }
   }
 
   setAuthToken(token) {
@@ -30,17 +36,38 @@ class APIClient {
       throw new Error('API_BASE_URL is not configured. Please set VITE_API_BASE_URL in your environment.');
     }
     
-    // Ensure endpoint starts with /api/v1 if not already included
-    const apiPath = endpoint.startsWith('/api/') ? endpoint : `/api/v1${endpoint}`;
-    const url = `${this.baseURL}${apiPath}`;
+    // For Supabase Edge Functions, use different path structure
+    const isSupabaseFunction = this.baseURL.includes('supabase.co/functions');
+    let url;
+    
+    if (isSupabaseFunction) {
+      // Direct function name for Supabase Edge Functions
+      const functionName = endpoint.replace('/api/v1/', '').replace('/', '-');
+      url = `${this.baseURL}/${functionName}`;
+    } else {
+      // Original API structure for Render backend
+      const apiPath = endpoint.startsWith('/api/') ? endpoint : `/api/v1${endpoint}`;
+      url = `${this.baseURL}${apiPath}`;
+    }
+    
+    // Build headers
+    const requestHeaders = {
+      ...this.headers,
+      ...options.headers,
+    };
+    
+    // Add API key for non-Supabase endpoints
+    if (!isSupabaseFunction) {
+      const apiKey = import.meta.env.VITE_API_KEY;
+      if (apiKey) {
+        requestHeaders['x-api-key'] = apiKey;
+      }
+    }
     
     try {
       const response = await fetch(url, {
         ...options,
-        headers: {
-          ...this.headers,
-          ...options.headers,
-        },
+        headers: requestHeaders,
       });
 
       const data = await response.json();
