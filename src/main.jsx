@@ -5,8 +5,8 @@ import App from './App.jsx'
 import './index.css'
 import { registerServiceWorker, initInstallPrompt } from './registerSW.js'
 
-// Force HTTPS in production
-if (location.protocol !== 'https:') {
+// Force HTTPS in production only
+if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
   location.replace(`https://${location.host}${location.pathname}`);
 }
 
