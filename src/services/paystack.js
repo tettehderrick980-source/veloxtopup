@@ -1,5 +1,5 @@
 import PaystackPop from '@paystack/inline-js'
-import { apiClient } from './api'
+import { supabase } from '../lib/supabase'
 
 export class PaystackService {
   constructor() {
@@ -53,8 +53,9 @@ export class PaystackService {
 
   async verifyPayment(reference) {
     try {
-      const response = await apiClient.post('/payments/verify', { reference })
-      return response
+      const { data, error } = await supabase.functions.invoke('verify-payment', { body: { reference } })
+      if (error) throw error
+      return data
     } catch (error) {
       console.error('Payment verification error:', error)
       throw error
