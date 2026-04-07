@@ -113,11 +113,8 @@ export default function BuyForm() {
   }, [lockCountdown, isLocked]);
 
   const checkWalletBalance = async () => {
-    try {
-      await GhDataConnectService.getWalletBalance();
-    } catch (error) {
-      console.error('Error checking wallet balance:', error);
-    }
+    // Silently check balance in background - don't block UI
+    GhDataConnectService.getWalletBalance().catch(() => {});
   };
 
   const checkDuplicateTransaction = (network, phone, capacity) => {
@@ -304,7 +301,7 @@ export default function BuyForm() {
         selling_price: selectedPlan.selling_price,
         profit: selectedPlan.profit,
         margin_percentage: selectedPlan.margin_percentage,
-        capacity: selectedPlan.capacity,
+        capacity: String(selectedPlan.capacity),
         status: 'pending',
         reference: `VTU${Date.now()}`,
         created_at: new Date().toISOString()
@@ -331,7 +328,20 @@ export default function BuyForm() {
         },
         onSuccess: async (response) => {
           try {
-            await db.updateTransaction(transaction.id, {
+            // Get fresh session token if user is logged in
+            const sessionToken = user
+              ? (await supabase.auth.getSession()).data.session?.access_token
+              : null;
+
+            const updateTx = async (id, updates) => {
+              const { error } = await supabase
+                .from('transactions')
+                .update(updates)
+                .eq('id', id);
+              if (error) throw error;
+            };
+
+            await updateTx(transaction.id, {
               status: 'processing',
               payment_reference: response.reference,
               updated_at: new Date().toISOString()
@@ -353,7 +363,8 @@ export default function BuyForm() {
                 reference: transaction.reference,
                 payment_reference: response.reference,
                 user_id: user?.id || null
-              }
+              },
+              ...(sessionToken ? { headers: { Authorization: `Bearer ${sessionToken}` } } : {})
             });
 
             if (fnError) throw fnError;
@@ -361,55 +372,48 @@ export default function BuyForm() {
             if (data?.data?.status === 'queued') {
               setTransactionStatus('queued');
               setSuccess(data.data.message || 'Order received! Your data will be delivered once our wallet is topped up.');
-              
-              await db.updateTransaction(transaction.id, {
+              await updateTx(transaction.id, {
                 status: 'processing',
                 fulfillment_status: 'queued',
                 fulfillment_expires_at: data.data.expires_at,
                 api_response: data.data,
                 updated_at: new Date().toISOString()
               });
-              
               lastTransactionRef.current = null;
               setIsLocked(false);
               startQueuedOrderPolling(transaction.id);
-              
             } else {
-              await db.updateTransaction(transaction.id, {
+              await updateTx(transaction.id, {
                 status: 'delivered',
                 fulfillment_status: 'fulfilled',
                 vendor_reference: data.data?.vendor_reference,
                 api_response: data.data,
                 updated_at: new Date().toISOString()
               });
-
               setTransactionStatus('delivered');
               setSuccess('Purchase completed successfully! Data has been delivered to your phone.');
-              
               lastTransactionRef.current = null;
               setIsLocked(false);
-              
               setTimeout(() => resetForm(), 5000);
             }
-            
+
           } catch (error) {
             console.error('Purchase processing error:', error);
             setTransactionStatus('failed');
             setError('Payment received but purchase failed. Please contact support.');
-            
-            await db.updateTransaction(transaction.id, {
+            await supabase.from('transactions').update({
               status: 'failed',
               api_response: { error: error.message },
               updated_at: new Date().toISOString()
-            });
+            }).eq('id', transaction.id);
           }
         },
         onClose: () => {
           if (transaction?.id) {
-            db.updateTransaction(transaction.id, {
+            supabase.from('transactions').update({
               status: 'cancelled',
               updated_at: new Date().toISOString()
-            });
+            }).eq('id', transaction.id);
           }
           setTransactionStatus('cancelled');
           setLoading(false);

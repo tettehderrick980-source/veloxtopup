@@ -215,15 +215,40 @@ CREATE POLICY "super_admin_manage_wallets"
 -- ----------------------------------------------------------------
 CREATE POLICY "transactions_select_own"
   ON public.transactions FOR SELECT
-  USING (user_id = auth.uid());
+  USING (
+    user_id = auth.uid()
+    OR user_id IS NULL
+    OR auth.uid() IS NULL
+  );
 
+DROP POLICY IF EXISTS "transactions_insert_own" ON public.transactions;
 CREATE POLICY "transactions_insert_own"
   ON public.transactions FOR INSERT
-  WITH CHECK (user_id = auth.uid() OR user_id IS NULL);
+  WITH CHECK (
+    user_id = auth.uid()
+    OR user_id IS NULL
+    OR auth.uid() IS NULL
+  );
 
+DROP POLICY IF EXISTS "transactions_update_own" ON public.transactions;
 CREATE POLICY "transactions_update_own"
   ON public.transactions FOR UPDATE
-  USING (user_id = auth.uid() OR user_id IS NULL);
+  USING (
+    user_id = auth.uid()
+    OR user_id IS NULL
+    OR auth.uid() IS NULL
+  )
+  WITH CHECK (
+    user_id = auth.uid()
+    OR user_id IS NULL
+    OR auth.uid() IS NULL
+  );
+
+DROP POLICY IF EXISTS "service_role_manage_transactions" ON public.transactions;
+CREATE POLICY "service_role_manage_transactions"
+  ON public.transactions FOR ALL
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
 
 CREATE POLICY "admins_select_all_transactions"
   ON public.transactions FOR SELECT

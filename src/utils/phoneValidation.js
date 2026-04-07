@@ -131,8 +131,9 @@ export function detectNetworkFromPhoneNumber(phoneNumber) {
 
   const prefix = cleaned.substring(0, 3);
 
-  // Check each network
+  // Check each network - skip atishare since it shares prefixes with atbigtime
   for (const [network, prefixes] of Object.entries(NETWORK_PREFIXES)) {
+    if (network === 'atishare') continue;
     if (prefixes.includes(prefix) || prefixes.includes('233' + prefix.substring(1))) {
       return network;
     }
