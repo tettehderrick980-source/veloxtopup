@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db, supabase } from '../lib/supabase';
 import { paystackService } from '../services/paystack';
-import { supabase } from '../lib/supabase';
 import { validateGhanaPhoneNumber, validatePhoneInput, detectNetworkFromPhoneNumber } from '../utils/phoneValidation';
 import GhDataConnectService, { GhDataConnectAPI } from '../services/ghdataconnect';
 import { 
@@ -621,17 +620,19 @@ export default function BuyForm() {
           </p>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-dark-300 mb-2">Email (Optional)</label>
-          <input
-            type="email"
-            value={guestEmail}
-            onChange={(e) => setGuestEmail(e.target.value)}
-            placeholder="your@email.com"
-            className="input-field w-full"
-            disabled={!!transactionStatus || isLocked}
-          />
-        </div>
+        {isGuest && (
+          <div>
+            <label className="block text-sm font-medium text-dark-300 mb-2">Email (Optional)</label>
+            <input
+              type="email"
+              value={guestEmail}
+              onChange={(e) => setGuestEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="input-field w-full"
+              disabled={!!transactionStatus || isLocked}
+            />
+          </div>
+        )}
 
         {selectedNetwork && (
           <div>
