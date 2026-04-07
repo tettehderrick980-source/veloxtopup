@@ -67,8 +67,7 @@ serve(async (req) => {
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     )
 
     const apiBaseUrl = Deno.env.get('GH_DATACONNECT_API_URL') || 'https://ghdataconnect.com/api'
@@ -191,21 +190,18 @@ serve(async (req) => {
     console.error('Purchase error:', error)
     
     try {
-      const { transactionId } = await req.json()
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      )
       if (transactionId) {
-        const supabaseClient = createClient(
-          Deno.env.get('SUPABASE_URL') ?? '',
-          Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-          { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-        )
-
         await supabaseClient
           .from('transactions')
           .update({
             status: 'failed',
             fulfillment_status: 'failed',
             needs_refund: true,
-            api_response: { error: error.message },
+            api_response: { error: (error as Error).message },
             updated_at: new Date().toISOString()
           })
           .eq('id', transactionId)

@@ -170,16 +170,19 @@ export default function BuyForm() {
     
     setCheckingStatus(true);
     try {
-      const { data } = await db.getTransactions(user?.id);
-      const tx = data?.find(t => t.id === currentTransaction.id);
-      if (tx) {
-        setTransactionStatus(tx.status);
-        
-        if (tx.status === 'delivered' || tx.status === 'success' || tx.fulfillment_status === 'fulfilled') {
+      const { data } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('id', currentTransaction.id)
+        .single();
+
+      if (data) {
+        setTransactionStatus(data.status);
+        if (data.status === 'delivered' || data.fulfillment_status === 'fulfilled') {
           setSuccess('Purchase completed successfully! Data has been delivered to your phone.');
           setTimeout(() => resetForm(), 5000);
-        } else if (tx.status === 'failed' || tx.fulfillment_status === 'expired') {
-          setError(tx.fulfillment_status === 'expired' ? 'Order expired. Refund has been initiated.' : 'Purchase failed. Please contact support.');
+        } else if (data.status === 'failed' || data.fulfillment_status === 'expired') {
+          setError(data.fulfillment_status === 'expired' ? 'Order expired. Refund has been initiated.' : 'Purchase failed. Please contact support.');
         }
       }
     } catch (error) {
@@ -192,20 +195,23 @@ export default function BuyForm() {
   const startQueuedOrderPolling = (transactionId) => {
     const pollInterval = setInterval(async () => {
       try {
-        const { data } = await db.getTransactions(user?.id);
-        const tx = data?.find(t => t.id === transactionId);
-        
-        if (tx) {
-          if (tx.fulfillment_status === 'fulfilled' || tx.status === 'delivered') {
+        const { data } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('id', transactionId)
+          .single();
+
+        if (data) {
+          if (data.fulfillment_status === 'fulfilled' || data.status === 'delivered') {
             clearInterval(pollInterval);
             setTransactionStatus('delivered');
             setSuccess('Purchase completed successfully! Data has been delivered to your phone.');
             setTimeout(() => resetForm(), 5000);
-          } else if (tx.fulfillment_status === 'expired') {
+          } else if (data.fulfillment_status === 'expired') {
             clearInterval(pollInterval);
             setTransactionStatus('expired');
             setError('Order expired due to processing timeout. Refund has been initiated.');
-          } else if (tx.fulfillment_status === 'failed') {
+          } else if (data.fulfillment_status === 'failed') {
             clearInterval(pollInterval);
             setTransactionStatus('failed');
             setError('Order processing failed. Please contact support.');
