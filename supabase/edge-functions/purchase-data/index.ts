@@ -54,8 +54,12 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  let transactionId: string | null = null
+
   try {
-    const { transactionId, network, phone, capacity, cost_price, selling_price, reference, payment_reference } = await req.json()
+    const body = await req.json()
+    transactionId = body.transactionId
+    const { network, phone, capacity, cost_price, selling_price, reference, payment_reference } = body
 
     if (!transactionId || !network || !phone || !capacity) {
       throw new Error('Missing required fields: transactionId, network, phone, capacity')
