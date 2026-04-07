@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db, supabase } from '../lib/supabase';
 import { paystackService } from '../services/paystack';
-import { purchaseAPI } from '../services/api';
+import { supabase } from '../lib/supabase';
 import { validateGhanaPhoneNumber, validatePhoneInput, detectNetworkFromPhoneNumber } from '../utils/phoneValidation';
 import GhDataConnectService, { GhDataConnectAPI } from '../services/ghdataconnect';
 import { 
@@ -337,27 +337,31 @@ export default function BuyForm() {
             setSuccess('Payment successful! Processing your purchase...');
             setError('');
 
-            const { data } = await purchaseAPI.createPurchase({
-              transactionId: transaction.id,
-              network: selectedNetwork,
-              phone: phoneNumber,
-              capacity: selectedPlan.capacity,
-              cost_price: selectedPlan.cost_price,
-              selling_price: selectedPlan.selling_price,
-              reference: transaction.reference,
-              payment_reference: response.reference,
-              user_id: user?.id || null
+            const { data, error: fnError } = await supabase.functions.invoke('purchase-data', {
+              body: {
+                transactionId: transaction.id,
+                network: selectedNetwork,
+                phone: phoneNumber,
+                capacity: selectedPlan.capacity,
+                cost_price: selectedPlan.cost_price,
+                selling_price: selectedPlan.selling_price,
+                reference: transaction.reference,
+                payment_reference: response.reference,
+                user_id: user?.id || null
+              }
             });
 
-            if (data?.status === 'queued') {
+            if (fnError) throw fnError;
+
+            if (data?.data?.status === 'queued') {
               setTransactionStatus('queued');
-              setSuccess(data.message || 'Order received! Your data will be delivered once our wallet is topped up.');
+              setSuccess(data.data.message || 'Order received! Your data will be delivered once our wallet is topped up.');
               
               await db.updateTransaction(transaction.id, {
                 status: 'processing',
                 fulfillment_status: 'queued',
-                fulfillment_expires_at: data.expires_at,
-                api_response: data,
+                fulfillment_expires_at: data.data.expires_at,
+                api_response: data.data,
                 updated_at: new Date().toISOString()
               });
               
@@ -369,8 +373,8 @@ export default function BuyForm() {
               await db.updateTransaction(transaction.id, {
                 status: 'delivered',
                 fulfillment_status: 'fulfilled',
-                vendor_reference: data.vendorReference,
-                api_response: data,
+                vendor_reference: data.data?.vendor_reference,
+                api_response: data.data,
                 updated_at: new Date().toISOString()
               });
 
