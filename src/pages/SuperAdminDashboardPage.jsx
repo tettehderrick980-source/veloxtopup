@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../lib/supabase';
-import { GhDataConnectService } from '../services/ghdataconnect';
-import { apiClient } from '../services/api';
+import { db, supabase } from '../lib/supabase';
 import { RefundModal } from '../components/RefundModal';
 import { RetryModal } from '../components/RetryModal';
 import { useNotification } from '../contexts/NotificationContext';
@@ -82,8 +80,10 @@ export default function SuperAdminDashboardPage() {
   const fetchGhDataConnectBalance = async () => {
     setBalanceLoading(true);
     try {
-      const balance = await GhDataConnectService.getWalletBalance(true);
-      setGhDataConnectBalance(balance);
+      const { data, error } = await supabase.functions.invoke('ghdataconnect-balance')
+      if (!error && data?.data?.balance) {
+        setGhDataConnectBalance(data.data.balance)
+      }
     } catch (error) {
       console.error('Error fetching balance:', error);
     } finally {
@@ -253,18 +253,21 @@ export default function SuperAdminDashboardPage() {
       
       if (error) throw error;
       
-      // Trigger the purchase API to retry using central apiClient
-      await apiClient.post('/purchases', {
-        transactionId: retryData.transactionId,
-        network: retryData.network,
-        phone: retryData.phone,
-        capacity: retryData.capacity,
-        cost_price: retryData.amount * 0.95,
-        selling_price: retryData.amount,
-        reference: `retry-${Date.now()}`,
-        is_retry: true,
-        retry_count: retryData.previousAttempts
-      });
+      // Invoke purchase-data edge function to retry
+      const { error: fnError } = await supabase.functions.invoke('purchase-data', {
+        body: {
+          transactionId: retryData.transactionId,
+          network: retryData.network,
+          phone: retryData.phone,
+          capacity: retryData.capacity,
+          cost_price: retryData.amount * 0.95,
+          selling_price: retryData.amount,
+          reference: `retry-${Date.now()}`,
+          is_retry: true
+        }
+      })
+
+      if (fnError) throw fnError
       
       // Log retry action for audit
       console.log('Retry initiated:', {
