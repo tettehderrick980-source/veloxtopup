@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
-import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,16 +8,12 @@ const corsHeaders = {
 
 async function verifyPaystackSignature(payload: string, signature: string, secret: string): Promise<boolean> {
   const encoder = new TextEncoder()
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-512' },
-    false,
-    ['sign']
+  const keyData = encoder.encode(secret)
+  const key = await globalThis.crypto.subtle.importKey(
+    'raw', keyData, { name: 'HMAC', hash: 'SHA-512' }, false, ['sign']
   )
-  const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(payload))
-  const hashArray = Array.from(new Uint8Array(signatureBuffer))
-  const computedHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  const sig = await globalThis.crypto.subtle.sign('HMAC', key, encoder.encode(payload))
+  const computedHash = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('')
   return computedHash === signature
 }
 
