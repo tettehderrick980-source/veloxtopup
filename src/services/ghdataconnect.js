@@ -20,7 +20,9 @@ export class GhDataConnectService {
       }
     }
 
-    const { data, error } = await supabase.functions.invoke('ghdataconnect-networks');
+    const { data, error } = await supabase.functions.invoke('ghdataconnect-networks', {
+      method: 'POST'
+    });
     if (error) throw error;
 
     const networks = data?.data || [];
@@ -38,7 +40,9 @@ export class GhDataConnectService {
       }
     }
 
-    const { data, error } = await supabase.functions.invoke('ghdataconnect-balance');
+    const { data, error } = await supabase.functions.invoke('ghdataconnect-balance', {
+      method: 'POST'
+    });
     if (error) throw error;
 
     const balance = data?.data?.balance || '0';

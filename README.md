@@ -47,15 +47,16 @@ The application uses the following Supabase tables:
 
 ## Deployment
 
-The application is configured for Vercel deployment with domain `veloxtopup.shop`.
+- **Frontend**: Vercel
+- **Logic**: Supabase Edge Functions (Deno)
 
 ## API Endpoints
 
 ### Edge Functions
-- `/api/verify-paystack-payment`: Verify Paystack payments
-- `/api/purchase-data`: Process data bundle purchases
-- `/api/paystack-webhook`: Handle Paystack webhooks
-- `/api/ghdataconnect-webhook`: Handle GhDataConnect webhooks
+- `verify-paystack-payment`: Logic for verifying external transactions.
+- `purchase-data`: Logic for interfacing with GhDataConnect.
+- `paystack-webhook`: Automated wallet funding.
+- `ghdataconnect-webhook`: Real-time order status updates.
 
 ## Security
 

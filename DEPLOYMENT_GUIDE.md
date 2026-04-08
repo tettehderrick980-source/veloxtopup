@@ -1,6 +1,6 @@
 # VeloxTopUp Professional Deployment Guide
 
-This guide covers deploying the **Frontend to Vercel** and **Backend to Render** manually.
+This guide covers deploying the **Frontend to Vercel** and the **Backend logic to Supabase Edge Functions**.
 
 ---
 
@@ -8,14 +8,12 @@ This guide covers deploying the **Frontend to Vercel** and **Backend to Render**
 
 - GitHub repository connected to your project
 - Vercel account (sign up at vercel.com)
-- Render account (sign up at render.com)
 - Supabase project already running
+- Supabase CLI installed locally
 
 ---
 
 ## Part 1: Deploy Frontend to Vercel
-
-### Step 1: Prepare the Frontend
 
 Your frontend is already configured with Vercel! The `vercel.json` handles SPA routing. Just ensure your environment variables are ready.
 
@@ -26,7 +24,6 @@ Create or update `.env.local` in the root with:
 ```env
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_API_BASE_URL=https://your-backend.onrender.com
 ```
 
 ### Step 3: Deploy to Vercel
@@ -41,7 +38,6 @@ VITE_API_BASE_URL=https://your-backend.onrender.com
 5. In **Environment Variables**, add:
    - `VITE_SUPABASE_URL` = your Supabase URL
    - `VITE_SUPABASE_ANON_KEY` = your Supabase anon key
-   - `VITE_API_BASE_URL` = your Render backend URL (you'll set this after deploying backend)
 6. Click **Deploy**
 
 ### Step 4: Note Your Vercel URL
@@ -50,31 +46,28 @@ After deployment, Vercel will give you a URL like: `https://veloxtopup-abc123.ve
 
 ---
 
-## Part 2: Deploy Backend to Render
+## Part 2: Deploy Supabase Edge Functions
 
-### Step 1: Prepare the Backend
+### Step 1: Login and Link
+```bash
+supabase login
+supabase link --project-ref your-supabase-project-id
+```
 
-Your backend is in `veloxtopup-api/` folder. Render can deploy from GitHub directly.
+### Step 2: Set Edge Function Secrets
+Store your API keys securely in the Supabase environment:
+```bash
+supabase secrets set PAYSTACK_SECRET_KEY=sk_live_xxx
+supabase secrets set GH_DATACONNECT_API_KEY=your_key
+```
 
-### Step 2: Create a render.yaml (Optional - can also use UI)
-
-Create `render.yaml` in `veloxtopup-api/` root:
-
-```yaml
-services:
-  - type: web
-    name: veloxtopup-api
-    env: node
-    buildCommand: npm install
-    startCommand: npm start
-    autoDeploy: false
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 5000
-      - key: NODE_VERSION
-        value: 20
+### Step 3: Deploy Logic
+Deploy each function individually or all at once:
+```bash
+supabase functions deploy purchase-data
+supabase functions deploy verify-paystack-payment
+supabase functions deploy paystack-webhook
+supabase functions deploy ghdataconnect-webhook
 ```
 
 ### Step 3: Deploy via Render Dashboard

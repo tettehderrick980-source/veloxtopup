@@ -44,19 +44,53 @@ async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 
 }
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { 
+      status: 200,
+      headers: corsHeaders 
+    })
+  }
+
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: 'Method not allowed' 
+      }),
+      { 
+        status: 405,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
   }
 
   try {
+    console.log('[ghdataconnect-networks] Processing request...')
+    
     const apiBaseUrl = Deno.env.get('GH_DATACONNECT_API_URL') || 'https://ghdataconnect.com/api'
     const apiKey = Deno.env.get('GH_DATACONNECT_API_KEY')
     
+    console.log(`[ghdataconnect-networks] API URL: ${apiBaseUrl}`)
+    console.log(`[ghdataconnect-networks] API Key configured: ${!!apiKey}`)
+    
     if (!apiKey) {
-      throw new Error('GhDataConnect API key not configured')
+      console.error('[ghdataconnect-networks] API key not configured')
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'GhDataConnect API key not configured' 
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
 
-    const data = await fetchWithRetry(
+    console.log('[ghdataconnect-networks] Fetching networks from GHDataConnect...')
+    const apiResponse = await fetchWithRetry(
       `${apiBaseUrl}/v1/getAllNetworks`,
       {
         method: 'GET',
@@ -68,16 +102,36 @@ serve(async (req) => {
       }
     )
 
+    console.log('[ghdataconnect-networks] Successfully fetched networks:', JSON.stringify(apiResponse).substring(0, 200))
+
+    // Return standardized response format
+    const response = {
+      success: true,
+      data: apiResponse?.data || apiResponse || [],
+      message: 'Networks fetched successfully'
+    }
+
     return new Response(
-      JSON.stringify(data),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      JSON.stringify(response),
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     )
 
   } catch (error) {
-    console.error('Error in ghdataconnect-networks:', error)
+    console.error('[ghdataconnect-networks] Error:', error.message)
+    
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      JSON.stringify({ 
+        success: false, 
+        error: error.message,
+        message: 'Failed to fetch networks from GhDataConnect'
+      }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     )
   }
 })

@@ -58,25 +58,53 @@ async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 
 }
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { 
+      status: 200,
+      headers: corsHeaders 
+    })
+  }
+
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: 'Method not allowed' 
+      }),
+      { 
+        status: 405,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
   }
 
   try {
+    console.log('[ghdataconnect-balance] Processing request...')
+    
     const apiBaseUrl = Deno.env.get('GH_DATACONNECT_API_URL') || 'https://ghdataconnect.com/api'
     const apiKey = Deno.env.get('GH_DATACONNECT_API_KEY')
     
-    console.log(`API Base URL: ${apiBaseUrl}`)
+    console.log(`[ghdataconnect-balance] API URL: ${apiBaseUrl}`)
+    console.log(`[ghdataconnect-balance] API Key configured: ${!!apiKey}`)
     
     if (!apiKey) {
-      console.error('GhDataConnect API key not configured - using fallback')
-      // Use a fallback key for development (you should set this in production)
-      throw new Error('GhDataConnect API key not configured. Please set GH_DATACONNECT_API_KEY in Supabase secrets.')
+      console.error('[ghdataconnect-balance] API key not configured')
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'GhDataConnect API key not configured' 
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
 
-    console.log(`Calling GhDataConnect API...`)
-    
-    const data = await fetchWithRetry(
+    console.log('[ghdataconnect-balance] Fetching balance from GHDataConnect...')
+    const apiResponse = await fetchWithRetry(
       `${apiBaseUrl}/v1/getWalletBalance`,
       {
         method: 'GET',
@@ -88,31 +116,43 @@ serve(async (req) => {
       }
     )
 
-    console.log(`GhDataConnect response:`, JSON.stringify(data))
+    console.log('[ghdataconnect-balance] Successfully fetched balance:', JSON.stringify(apiResponse))
 
-    // Return the balance in a format that's easy for the frontend to consume
+    // Extract balance with proper fallbacks
+    const balance = apiResponse?.data?.balance || apiResponse?.balance || '0'
+    const currency = apiResponse?.data?.currency || apiResponse?.currency || 'GHS'
+
+    // Return standardized response format
+    const response = {
+      success: true,
+      data: {
+        balance: balance.toString(),
+        currency: currency
+      },
+      message: 'Balance fetched successfully'
+    }
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        data: {
-          balance: data?.data?.balance || data?.balance || '0',
-          currency: data?.data?.currency || data?.currency || 'GHS'
-        }
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      JSON.stringify(response),
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     )
 
   } catch (error) {
-    console.error('Error in ghdataconnect-balance:', error)
+    console.error('[ghdataconnect-balance] Error:', error.message)
     
-    // Return a more informative error response
     return new Response(
       JSON.stringify({ 
         success: false, 
         error: error.message,
         message: 'Failed to fetch wallet balance from GhDataConnect'
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     )
   }
 })
