@@ -1,0 +1,20 @@
+# Triggers the Supabase Edge Function to process queued orders every 5 minutes
+
+name: Process Queued Orders
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  process-orders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger process-queued-orders function
+        run: |
+          curl -X POST \
+            https://xlsrtcfndfsmcjaoswfq.supabase.co/functions/v1/process-queued-orders \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}'

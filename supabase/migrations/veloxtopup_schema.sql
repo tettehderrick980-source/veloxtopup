@@ -167,20 +167,24 @@ ALTER TABLE public.admin_notifications ENABLE ROW LEVEL SECURITY;
 -- ----------------------------------------------------------------
 -- Users policies
 -- ----------------------------------------------------------------
+DROP POLICY IF EXISTS "users_select_own" ON public.users;
 CREATE POLICY "users_select_own"
   ON public.users FOR SELECT
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "users_update_own" ON public.users;
 CREATE POLICY "users_update_own"
   ON public.users FOR UPDATE
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "admins_select_all_users" ON public.users;
 CREATE POLICY "admins_select_all_users"
   ON public.users FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')
   ));
 
+DROP POLICY IF EXISTS "super_admin_manage_users" ON public.users;
 CREATE POLICY "super_admin_manage_users"
   ON public.users FOR ALL
   USING (EXISTS (
@@ -190,20 +194,24 @@ CREATE POLICY "super_admin_manage_users"
 -- ----------------------------------------------------------------
 -- Wallets policies
 -- ----------------------------------------------------------------
+DROP POLICY IF EXISTS "wallets_select_own" ON public.wallets;
 CREATE POLICY "wallets_select_own"
   ON public.wallets FOR SELECT
   USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "wallets_update_own" ON public.wallets;
 CREATE POLICY "wallets_update_own"
   ON public.wallets FOR UPDATE
   USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "admins_select_all_wallets" ON public.wallets;
 CREATE POLICY "admins_select_all_wallets"
   ON public.wallets FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')
   ));
 
+DROP POLICY IF EXISTS "super_admin_manage_wallets" ON public.wallets;
 CREATE POLICY "super_admin_manage_wallets"
   ON public.wallets FOR ALL
   USING (EXISTS (
@@ -213,6 +221,7 @@ CREATE POLICY "super_admin_manage_wallets"
 -- ----------------------------------------------------------------
 -- Transactions policies
 -- ----------------------------------------------------------------
+DROP POLICY IF EXISTS "transactions_select_own" ON public.transactions;
 CREATE POLICY "transactions_select_own"
   ON public.transactions FOR SELECT
   USING (
@@ -250,12 +259,14 @@ CREATE POLICY "service_role_manage_transactions"
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
 
+DROP POLICY IF EXISTS "admins_select_all_transactions" ON public.transactions;
 CREATE POLICY "admins_select_all_transactions"
   ON public.transactions FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')
   ));
 
+DROP POLICY IF EXISTS "super_admin_manage_transactions" ON public.transactions;
 CREATE POLICY "super_admin_manage_transactions"
   ON public.transactions FOR ALL
   USING (EXISTS (
@@ -265,16 +276,19 @@ CREATE POLICY "super_admin_manage_transactions"
 -- ----------------------------------------------------------------
 -- Referrals policies
 -- ----------------------------------------------------------------
+DROP POLICY IF EXISTS "referrals_select_own" ON public.referrals;
 CREATE POLICY "referrals_select_own"
   ON public.referrals FOR SELECT
   USING (referrer_id = auth.uid() OR referred_user_id = auth.uid());
 
+DROP POLICY IF EXISTS "admins_select_all_referrals" ON public.referrals;
 CREATE POLICY "admins_select_all_referrals"
   ON public.referrals FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')
   ));
 
+DROP POLICY IF EXISTS "super_admin_manage_referrals" ON public.referrals;
 CREATE POLICY "super_admin_manage_referrals"
   ON public.referrals FOR ALL
   USING (EXISTS (
@@ -284,6 +298,7 @@ CREATE POLICY "super_admin_manage_referrals"
 -- ----------------------------------------------------------------
 -- Webhook events policies (super admin only)
 -- ----------------------------------------------------------------
+DROP POLICY IF EXISTS "super_admin_manage_webhook_events" ON public.webhook_events;
 CREATE POLICY "super_admin_manage_webhook_events"
   ON public.webhook_events FOR ALL
   USING (EXISTS (
@@ -293,18 +308,21 @@ CREATE POLICY "super_admin_manage_webhook_events"
 -- ----------------------------------------------------------------
 -- Admin notifications policies
 -- ----------------------------------------------------------------
+DROP POLICY IF EXISTS "admins_select_notifications" ON public.admin_notifications;
 CREATE POLICY "admins_select_notifications"
   ON public.admin_notifications FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')
   ));
 
+DROP POLICY IF EXISTS "admins_update_notifications" ON public.admin_notifications;
 CREATE POLICY "admins_update_notifications"
   ON public.admin_notifications FOR UPDATE
   USING (EXISTS (
     SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')
   ));
 
+DROP POLICY IF EXISTS "super_admin_manage_notifications" ON public.admin_notifications;
 CREATE POLICY "super_admin_manage_notifications"
   ON public.admin_notifications FOR ALL
   USING (EXISTS (
@@ -358,18 +376,22 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_users_updated_at ON public.users;
 CREATE TRIGGER trg_users_updated_at
   BEFORE UPDATE ON public.users
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS trg_wallets_updated_at ON public.wallets;
 CREATE TRIGGER trg_wallets_updated_at
   BEFORE UPDATE ON public.wallets
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS trg_transactions_updated_at ON public.transactions;
 CREATE TRIGGER trg_transactions_updated_at
   BEFORE UPDATE ON public.transactions
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS trg_referrals_updated_at ON public.referrals;
 CREATE TRIGGER trg_referrals_updated_at
   BEFORE UPDATE ON public.referrals
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
@@ -400,3 +422,35 @@ WHERE table_schema = 'public'
   AND table_name IN ('users', 'wallets', 'transactions', 'referrals', 'webhook_events', 'admin_notifications');
 
 SELECT 'Setup complete ✅' AS status;
+
+
+-- ================================================================
+-- SECTION 7: SCHEDULED JOB - PROCESS QUEUED ORDERS
+-- ================================================================
+-- Runs every 5 minutes to fulfill queued orders via pg_cron
+
+-- Enable required extensions
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+CREATE EXTENSION IF NOT EXISTS pg_net;
+
+-- Remove existing schedule if any (idempotent)
+SELECT cron.unschedule('process-queued-orders') 
+WHERE EXISTS (
+  SELECT 1 FROM cron.job WHERE jobname = 'process-queued-orders'
+);
+
+-- Schedule process-queued-orders to run every 5 minutes
+SELECT cron.schedule(
+  'process-queued-orders',
+  '*/5 * * * *',
+  $$
+  SELECT net.http_post(
+    url := 'https://xlsrtcfndfsmcjaoswfq.supabase.co/functions/v1/process-queued-orders',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);

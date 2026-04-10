@@ -61,6 +61,10 @@ export default function BuyForm() {
   const [phoneError, setPhoneError] = useState('');
   const [detectedNetwork, setDetectedNetwork] = useState(null);
 
+  // Refs for polling cleanup
+  const pollingIntervalRef = useRef(null);
+  const pollingTimeoutRef = useRef(null);
+
   const isGuest = !user;
   const totalAmount = selectedPlan ? selectedPlan.selling_price : 0;
 
@@ -111,6 +115,18 @@ export default function BuyForm() {
       lastTransactionRef.current = null;
     }
   }, [lockCountdown, isLocked]);
+
+  // Cleanup polling interval and timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const checkWalletBalance = async () => {
     // Silently check balance in background - don't block UI
@@ -190,6 +206,8 @@ export default function BuyForm() {
   };
 
   const startQueuedOrderPolling = (transactionId) => {
+    const MAX_POLLING_DURATION = 65 * 60 * 1000; // 65 minutes (slightly beyond 1-hour queue expiry)
+
     const pollInterval = setInterval(async () => {
       try {
         const { data } = await supabase
@@ -201,15 +219,30 @@ export default function BuyForm() {
         if (data) {
           if (data.fulfillment_status === 'fulfilled' || data.status === 'delivered') {
             clearInterval(pollInterval);
+            if (pollingTimeoutRef.current) {
+              clearTimeout(pollingTimeoutRef.current);
+              pollingTimeoutRef.current = null;
+            }
+            pollingIntervalRef.current = null;
             setTransactionStatus('delivered');
             setSuccess('Purchase completed successfully! Data has been delivered to your phone.');
             setTimeout(() => resetForm(), 5000);
           } else if (data.fulfillment_status === 'expired') {
             clearInterval(pollInterval);
+            if (pollingTimeoutRef.current) {
+              clearTimeout(pollingTimeoutRef.current);
+              pollingTimeoutRef.current = null;
+            }
+            pollingIntervalRef.current = null;
             setTransactionStatus('expired');
             setError('Order expired due to processing timeout. Refund has been initiated.');
           } else if (data.fulfillment_status === 'failed') {
             clearInterval(pollInterval);
+            if (pollingTimeoutRef.current) {
+              clearTimeout(pollingTimeoutRef.current);
+              pollingTimeoutRef.current = null;
+            }
+            pollingIntervalRef.current = null;
             setTransactionStatus('failed');
             setError('Order processing failed. Please contact support.');
           }
@@ -218,9 +251,32 @@ export default function BuyForm() {
         console.error('Error polling queued order:', error);
       }
     }, 10000);
+
+    pollingIntervalRef.current = pollInterval;
+
+    // Set a maximum polling timeout
+    pollingTimeoutRef.current = setTimeout(() => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      pollingTimeoutRef.current = null;
+      setTransactionStatus('expired');
+      setError('Your order has expired. If payment was made, a refund will be initiated automatically. Please contact support if you need assistance.');
+    }, MAX_POLLING_DURATION);
   };
 
   const resetForm = () => {
+    // Clean up any ongoing polling
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    if (pollingTimeoutRef.current) {
+      clearTimeout(pollingTimeoutRef.current);
+      pollingTimeoutRef.current = null;
+    }
+
     setSelectedNetwork('');
     setPhoneNumber('');
     setSelectedPlan(null);

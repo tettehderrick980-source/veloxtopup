@@ -1,46 +1,9 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
+import { fetchWithRetry, getApiCredentials, createAuthHeaders } from '../shared/ghDataConnect.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-const MAX_RETRIES = 3
-const BASE_RETRY_DELAY = 1000
-
-async function fetchWithRetry(url: string, options: RequestInit = {}, retries = MAX_RETRIES): Promise<any> {
-  let lastError: Error | null = null
-  
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await fetch(url, options)
-      
-      const contentType = response.headers.get('content-type')
-      if (contentType && contentType.includes('text/html')) {
-        const text = await response.text()
-        throw new Error(`API returned HTML instead of JSON: ${text.substring(0, 100)}`)
-      }
-      
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`API error: ${response.status} - ${errorText}`)
-      }
-      
-      return await response.json()
-      
-    } catch (error) {
-      console.error(`Attempt ${i + 1}/${retries} failed:`, (error as Error).message)
-      lastError = error as Error
-      
-      if (i < retries - 1) {
-        const delay = BASE_RETRY_DELAY * Math.pow(2, i)
-        console.log(`Retrying in ${delay}ms...`)
-        await new Promise(resolve => setTimeout(resolve, delay))
-      }
-    }
-  }
-  
-  throw lastError
 }
 
 serve(async (req) => {
@@ -55,8 +18,7 @@ serve(async (req) => {
       throw new Error('Reference is required')
     }
 
-    const apiBaseUrl = Deno.env.get('GH_DATACONNECT_API_URL') || 'https://ghdataconnect.com/api'
-    const apiKey = Deno.env.get('GH_DATACONNECT_API_KEY')
+    const { apiBaseUrl, apiKey } = getApiCredentials()
     
     if (!apiKey) {
       throw new Error('GhDataConnect API key not configured')
@@ -66,11 +28,7 @@ serve(async (req) => {
       `${apiBaseUrl}/v1/checkOrderStatus/${reference}`,
       {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
+        headers: createAuthHeaders(apiKey)
       }
     )
 

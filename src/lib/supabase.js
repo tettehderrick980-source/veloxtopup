@@ -1,11 +1,22 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://undwptrvpesyfsxccenc.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVuZHdwdHJ2cGVzeWZzeGNjZW5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NTQ4NDAsImV4cCI6MjA5MTEzMDg0MH0.WWo0ceonZLwpn6Znq5eIcIFjiDeqPYGkiYNNjCXEHrg'
+// Supabase configuration - MUST be set via environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY
 
-// Log for debugging
-console.log('[Supabase] Initializing with URL:', supabaseUrl)
-console.log('[Supabase] Initializing with Key:', supabaseAnonKey?.substring(0, 50) + '...')
+// Validate required configuration
+if (!supabaseUrl) {
+  throw new Error('VITE_SUPABASE_URL is required. Please set it in your .env file.')
+}
+if (!supabaseAnonKey) {
+  throw new Error('VITE_SUPABASE_ANON_KEY is required. Please set it in your .env file.')
+}
+
+// Log for debugging (only in development)
+if (import.meta.env.DEV) {
+  console.log('[Supabase] Initializing with URL:', supabaseUrl)
+  console.log('[Supabase] Key prefix:', supabaseAnonKey?.substring(0, 20) + '...')
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 

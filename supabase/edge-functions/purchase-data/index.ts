@@ -1,47 +1,10 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { fetchWithRetry, getApiCredentials, createAuthHeaders } from '../shared/ghDataConnect.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-const MAX_RETRIES = 3
-const BASE_RETRY_DELAY = 1000
-
-async function fetchWithRetry(url: string, options: RequestInit = {}, retries = MAX_RETRIES): Promise<any> {
-  let lastError: Error | null = null
-  
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await fetch(url, options)
-      
-      const contentType = response.headers.get('content-type')
-      if (contentType && contentType.includes('text/html')) {
-        const text = await response.text()
-        throw new Error(`API returned HTML instead of JSON: ${text.substring(0, 100)}`)
-      }
-      
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`API error: ${response.status} - ${errorText}`)
-      }
-      
-      return await response.json()
-      
-    } catch (error) {
-      console.error(`Attempt ${i + 1}/${retries} failed:`, (error as Error).message)
-      lastError = error as Error
-      
-      if (i < retries - 1) {
-        const delay = BASE_RETRY_DELAY * Math.pow(2, i)
-        console.log(`Retrying in ${delay}ms...`)
-        await new Promise(resolve => setTimeout(resolve, delay))
-      }
-    }
-  }
-  
-  throw lastError
 }
 
 // Transaction limits
@@ -59,6 +22,70 @@ serve(async (req) => {
   try {
     const body = await req.json()
     transactionId = body.transactionId
+
+    // ============================================
+    // REQUEST AUTHENTICATION
+    // ============================================
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error: SUPABASE_SERVICE_ROLE_KEY is not set' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      )
+    }
+
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
+    let isAuthenticated = false
+
+    // 1. Check for internal webhook secret (from paystack-webhook)
+    const webhookSecret = Deno.env.get('WEBHOOK_INTERNAL_SECRET')
+    const providedWebhookSecret = req.headers.get('x-webhook-secret')
+    if (webhookSecret && providedWebhookSecret === webhookSecret) {
+      isAuthenticated = true
+      console.log('✅ Authenticated via webhook secret')
+    }
+
+    // 2. Check for valid JWT token (authenticated users)
+    if (!isAuthenticated) {
+      const authHeader = req.headers.get('Authorization')
+      if (authHeader) {
+        const token = authHeader.replace('Bearer ', '')
+        try {
+          const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
+          if (user && !authError) {
+            isAuthenticated = true
+            console.log('✅ Authenticated via JWT token for user:', user.id)
+          }
+        } catch (authError) {
+          console.log('JWT verification failed:', authError)
+        }
+      }
+    }
+
+    // 3. Check for guest purchase with valid processing transaction
+    if (!isAuthenticated && transactionId) {
+      const { data: transaction, error: txError } = await supabaseClient
+        .from('transactions')
+        .select('id, status')
+        .eq('id', transactionId)
+        .single()
+      
+      if (!txError && transaction && transaction.status === 'processing') {
+        isAuthenticated = true
+        console.log('✅ Authenticated via valid processing transaction:', transactionId)
+      }
+    }
+
+    // Reject if not authenticated
+    if (!isAuthenticated) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Invalid or missing authentication' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      )
+    }
+    // ============================================
     const { network, phone, capacity, cost_price, selling_price, reference, payment_reference } = body
 
     if (!transactionId || !network || !phone || !capacity) {
@@ -69,13 +96,7 @@ serve(async (req) => {
       throw new Error(`Transaction amount exceeds maximum limit of GH₵${MAX_TRANSACTION_AMOUNT}`)
     }
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    )
-
-    const apiBaseUrl = Deno.env.get('GH_DATACONNECT_API_URL') || 'https://ghdataconnect.com/api'
-    const apiKey = Deno.env.get('GH_DATACONNECT_API_KEY')
+    const { apiBaseUrl, apiKey } = getApiCredentials()
     
     if (!apiKey) {
       throw new Error('GhDataConnect API key not configured')
@@ -86,7 +107,7 @@ serve(async (req) => {
       `${apiBaseUrl}/v1/getWalletBalance`,
       {
         method: 'GET',
-        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'Accept': 'application/json' }
+        headers: createAuthHeaders(apiKey)
       }
     )
     const balance = parseFloat(walletData?.data?.balance || '0')
@@ -165,7 +186,7 @@ serve(async (req) => {
       `${apiBaseUrl}/v1/placeOrder`,
       {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        headers: createAuthHeaders(apiKey),
         body: JSON.stringify({ network, recipient: phone, capacity })
       }
     )
@@ -194,11 +215,11 @@ serve(async (req) => {
     console.error('Purchase error:', error)
     
     try {
-      const supabaseClient = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-      )
-      if (transactionId) {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      
+      if (supabaseUrl && supabaseServiceKey && transactionId) {
+        const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
         await supabaseClient
           .from('transactions')
           .update({

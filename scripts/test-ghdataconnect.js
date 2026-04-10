@@ -5,7 +5,7 @@
  */
 
 const API_BASE_URL = 'https://ghdataconnect.com/api';
-const API_KEY = '149|y58B7GnyczxIZGuUQIeegaElQU6UyyVBs3bnlwcS8d2fa872';
+const API_KEY = '197|tG0LVi5Ts8As6rw3hg3n0eruUVjHpP5OGB45szkk31035673';
 
 async function makeRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
