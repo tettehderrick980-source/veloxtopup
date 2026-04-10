@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { db, supabase } from '../lib/supabase';
 import { paystackService } from '../services/paystack';
 import { validateGhanaPhoneNumber, validatePhoneInput, detectNetworkFromPhoneNumber } from '../utils/phoneValidation';
@@ -35,14 +36,15 @@ const TRANSACTION_LOCK_DURATION = 30000;
 
 export default function BuyForm() {
   const { user } = useAuth();
+  const { success, error, warning } = useNotification();
   const [selectedNetwork, setSelectedNetwork] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedPlan, setSelectedPlan] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [bundlesLoading, setBundlesLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [formError, setFormError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [bundles, setBundles] = useState([]);
   const [availableNetworks, setAvailableNetworks] = useState([]);
   const [currentTransaction, setCurrentTransaction] = useState(null);
@@ -165,13 +167,13 @@ export default function BuyForm() {
 
   const fetchBundles = async () => {
     setBundlesLoading(true);
-    setError('');
+    setFormError('');
     try {
       const fetchedBundles = await GhDataConnectAPI.getPlansForNetwork(selectedNetwork);
       setBundles(fetchedBundles);
-    } catch (error) {
-      console.error('Error fetching bundles:', error);
-      setError(`Failed to load ${selectedNetwork} bundles`);
+    } catch (err) {
+      console.error('Error fetching bundles:', err);
+      setFormError(`Failed to load ${selectedNetwork} bundles`);
       setBundles([]);
     } finally {
       setBundlesLoading(false);
@@ -192,14 +194,14 @@ export default function BuyForm() {
       if (data) {
         setTransactionStatus(data.status);
         if (data.status === 'delivered' || data.fulfillment_status === 'fulfilled') {
-          setSuccess('Purchase completed successfully! Data has been delivered to your phone.');
+          success('Purchase completed successfully! Data has been delivered to your phone.');
           setTimeout(() => resetForm(), 5000);
         } else if (data.status === 'failed' || data.fulfillment_status === 'expired') {
-          setError(data.fulfillment_status === 'expired' ? 'Order expired. Refund has been initiated.' : 'Purchase failed. Please contact support.');
+          error(data.fulfillment_status === 'expired' ? 'Order expired. Refund has been initiated.' : 'Purchase failed. Please contact support.');
         }
       }
-    } catch (error) {
-      console.error('Error checking status:', error);
+    } catch (err) {
+      console.error('Error checking status:', err);
     } finally {
       setCheckingStatus(false);
     }
@@ -225,7 +227,7 @@ export default function BuyForm() {
             }
             pollingIntervalRef.current = null;
             setTransactionStatus('delivered');
-            setSuccess('Purchase completed successfully! Data has been delivered to your phone.');
+            success('Purchase completed successfully! Data has been delivered to your phone.');
             setTimeout(() => resetForm(), 5000);
           } else if (data.fulfillment_status === 'expired') {
             clearInterval(pollInterval);
@@ -235,7 +237,7 @@ export default function BuyForm() {
             }
             pollingIntervalRef.current = null;
             setTransactionStatus('expired');
-            setError('Order expired due to processing timeout. Refund has been initiated.');
+            error('Order expired due to processing timeout. Refund has been initiated.');
           } else if (data.fulfillment_status === 'failed') {
             clearInterval(pollInterval);
             if (pollingTimeoutRef.current) {
@@ -244,7 +246,7 @@ export default function BuyForm() {
             }
             pollingIntervalRef.current = null;
             setTransactionStatus('failed');
-            setError('Order processing failed. Please contact support.');
+            error('Order processing failed. Please contact support.');
           }
         }
       } catch (error) {
@@ -262,7 +264,7 @@ export default function BuyForm() {
       }
       pollingTimeoutRef.current = null;
       setTransactionStatus('expired');
-      setError('Your order has expired. If payment was made, a refund will be initiated automatically. Please contact support if you need assistance.');
+      error('Your order has expired. If payment was made, a refund will be initiated automatically. Please contact support if you need assistance.');
     }, MAX_POLLING_DURATION);
   };
 
@@ -283,8 +285,8 @@ export default function BuyForm() {
     setBundles([]);
     setCurrentTransaction(null);
     setTransactionStatus(null);
-    setError('');
-    setSuccess('');
+    setFormError('');
+    setSuccessMessage('');
     setShowReportForm(false);
     setReportNote('');
     setReportSent(false);
@@ -317,8 +319,8 @@ export default function BuyForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setFormError('');
+    setSuccessMessage('');
     setLoading(true);
 
     try {
@@ -405,8 +407,8 @@ export default function BuyForm() {
 
             setCurrentTransaction(transaction);
             setTransactionStatus('processing');
-            setSuccess('Payment successful! Processing your purchase...');
-            setError('');
+            success('Payment successful! Processing your purchase...');
+            setFormError('');
 
             const { data, error: fnError } = await supabase.functions.invoke('purchase-data', {
               body: {
@@ -427,7 +429,7 @@ export default function BuyForm() {
 
             if (data?.data?.status === 'queued') {
               setTransactionStatus('queued');
-              setSuccess(data.data.message || 'Order received! Your data will be delivered once our wallet is topped up.');
+              success(data.data.message || 'Order received! Your data will be delivered once our wallet is topped up.');
               await updateTx(transaction.id, {
                 status: 'processing',
                 fulfillment_status: 'queued',
@@ -447,19 +449,19 @@ export default function BuyForm() {
                 updated_at: new Date().toISOString()
               });
               setTransactionStatus('delivered');
-              setSuccess('Purchase completed successfully! Data has been delivered to your phone.');
+              success('Purchase completed successfully! Data has been delivered to your phone.');
               lastTransactionRef.current = null;
               setIsLocked(false);
               setTimeout(() => resetForm(), 5000);
             }
 
-          } catch (error) {
-            console.error('Purchase processing error:', error);
+          } catch (err) {
+            console.error('Purchase processing error:', err);
             setTransactionStatus('failed');
-            setError('Payment received but purchase failed. Please contact support.');
+            error('Payment received but purchase failed. Please contact support.');
             await supabase.from('transactions').update({
               status: 'failed',
-              api_response: { error: error.message },
+              api_response: { error: err.message },
               updated_at: new Date().toISOString()
             }).eq('id', transaction.id);
           }
@@ -478,9 +480,9 @@ export default function BuyForm() {
         }
       });
 
-    } catch (error) {
-      console.error('Purchase error:', error);
-      setError(error.message || 'Purchase failed');
+    } catch (err) {
+      console.error('Purchase error:', err);
+      error(err.message || 'Purchase failed');
       lastTransactionRef.current = null;
       setIsLocked(false);
     } finally {
@@ -498,15 +500,15 @@ export default function BuyForm() {
     <div className="card max-w-2xl mx-auto">
       <h2 className="text-2xl font-bold text-white mb-6">Buy Data Bundles</h2>
       
-      {error && (
+      {formError && (
         <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded-lg mb-4">
-          {error}
+          {formError}
         </div>
       )}
       
-      {success && (
+      {successMessage && (
         <div className="bg-green-900 border border-green-700 text-green-200 px-4 py-3 rounded-lg mb-4">
-          {success}
+          {successMessage}
         </div>
       )}
 

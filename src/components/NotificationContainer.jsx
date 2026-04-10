@@ -29,7 +29,7 @@ const NotificationStyles = {
 };
 
 const NotificationItem = ({ notification }) => {
-  const { removeNotification } = useNotification();
+  const { removeToast } = useNotification();
 
   return (
     <div 
@@ -52,7 +52,7 @@ const NotificationItem = ({ notification }) => {
       </div>
 
       <button 
-        onClick={() => removeNotification(notification.id)}
+        onClick={() => removeToast(notification.id)}
         className="flex-shrink-0 p-1 rounded-lg hover:bg-white/10 transition-colors"
         aria-label="Close notification"
       >
@@ -74,9 +74,9 @@ const NotificationItem = ({ notification }) => {
 };
 
 export const NotificationContainer = () => {
-  const { notifications, clearAll } = useNotification();
+  const { toasts, clearAllToasts } = useNotification();
 
-  if (notifications.length === 0) return null;
+  if (toasts.length === 0) return null;
 
   return (
     <div 
@@ -85,20 +85,20 @@ export const NotificationContainer = () => {
       aria-atomic="true"
     >
       {/* Clear all button */}
-      {notifications.length > 1 && (
+      {toasts.length > 1 && (
         <div className="flex justify-end pointer-events-auto mb-1">
           <button 
-            onClick={clearAll}
+            onClick={clearAllToasts}
             className="text-xs text-dark-400 hover:text-white bg-dark-800/90 px-2 py-1 rounded backdrop-blur-sm"
           >
-            Clear all ({notifications.length})
+            Clear all ({toasts.length})
           </button>
         </div>
       )}
 
       {/* Notifications */}
       <div className="flex flex-col gap-2 pointer-events-auto">
-        {notifications.map(notification => (
+        {toasts.map(notification => (
           <NotificationItem key={notification.id} notification={notification} />
         ))}
       </div>

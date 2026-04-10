@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/supabase';
-import { UserIcon, KeyIcon, BellIcon } from '@heroicons/react/24/outline';
+import { UserIcon, KeyIcon, BellIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
+import PWADiagnostics from '../components/PWADiagnostics';
 
 export default function ProfilePage() {
   const { user, userProfile, signOut } = useAuth();
@@ -116,7 +117,8 @@ export default function ProfilePage() {
   const tabs = [
     { id: 'profile', label: 'Profile', icon: UserIcon },
     { id: 'security', label: 'Security', icon: KeyIcon },
-    { id: 'notifications', label: 'Notifications', icon: BellIcon }
+    { id: 'notifications', label: 'Notifications', icon: BellIcon },
+    { id: 'pwa', label: 'PWA Status', icon: DevicePhoneMobileIcon }
   ];
 
   return (
@@ -346,6 +348,13 @@ export default function ProfilePage() {
               >
                 {loading ? 'Saving...' : 'Save Preferences'}
               </button>
+            </div>
+          )}
+
+          {/* PWA Tab */}
+          {activeTab === 'pwa' && (
+            <div>
+              <PWADiagnostics />
             </div>
           )}
         </div>

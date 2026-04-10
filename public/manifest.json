@@ -65,6 +65,29 @@
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     }
   ],
+  "screenshots": [
+    {
+      "src": "/screenshots/screenshot-mobile-1.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "VeloxTopUp - Buy affordable data bundles"
+    },
+    {
+      "src": "/screenshots/screenshot-mobile-2.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "VeloxTopUp - Track your orders"
+    },
+    {
+      "src": "/screenshots/screenshot-desktop-1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "VeloxTopUp - Dashboard overview"
+    }
+  ],
   "prefer_related_applications": false,
   "handle_links": "preferred"
 }

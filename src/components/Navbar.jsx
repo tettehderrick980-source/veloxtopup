@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useWallet } from '../contexts/WalletContext';
 import { useNotification } from '../contexts/NotificationContext';
+import NotificationBell from './NotificationBell';
 import { 
   Bars3Icon, 
   XMarkIcon,
@@ -14,7 +15,6 @@ import {
   DocumentTextIcon,
   CogIcon,
   BoltIcon,
-  BellIcon,
   TruckIcon
 } from '@heroicons/react/24/outline';
 
@@ -23,7 +23,6 @@ export default function Navbar({ user }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { signOut, userProfile } = useAuth();
   const { wallet } = useWallet();
-  const { notifications } = useNotification();
   const navigate = useNavigate();
   const location = useLocation();
   const userMenuRef = useRef(null);
@@ -136,19 +135,7 @@ export default function Navbar({ user }) {
                 )}
 
                 {/* Notification Bell */}
-                <div className="relative">
-                  <button 
-                    className="p-2 text-dark-300 hover:text-primary-400 hover:bg-dark-800/50 rounded-lg transition-colors"
-                    title={`${notifications.length} notification${notifications.length !== 1 ? 's' : ''}`}
-                  >
-                    <BellIcon className="w-5 h-5" />
-                    {notifications.length > 0 && (
-                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                        {notifications.length > 9 ? '9+' : notifications.length}
-                      </span>
-                    )}
-                  </button>
-                </div>
+                <NotificationBell />
                 
                 {/* User Menu */}
                 <div className="relative" ref={userMenuRef}>

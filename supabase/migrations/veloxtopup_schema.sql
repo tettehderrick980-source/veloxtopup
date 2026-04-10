@@ -454,3 +454,54 @@ SELECT cron.schedule(
   );
   $$
 );
+
+
+-- ============================================
+-- SECTION 8: USER NOTIFICATIONS
+-- In-app notification system for users and admins
+-- ============================================
+
+-- User notifications table
+CREATE TABLE IF NOT EXISTS public.user_notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL CHECK (type IN (
+        'order_delivered', 'order_failed', 'order_queued', 'order_expired',
+        'refund_initiated', 'refund_completed',
+        'low_balance', 'fulfillment_failed', 'system'
+    )),
+    title TEXT NOT NULL,
+    message TEXT,
+    data JSONB DEFAULT '{}',
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for efficient queries
+CREATE INDEX IF NOT EXISTS idx_user_notifications_user_unread 
+    ON public.user_notifications(user_id, is_read) WHERE is_read = FALSE;
+CREATE INDEX IF NOT EXISTS idx_user_notifications_user_created 
+    ON public.user_notifications(user_id, created_at DESC);
+
+-- RLS policies
+ALTER TABLE public.user_notifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own notifications" ON public.user_notifications;
+CREATE POLICY "Users can view own notifications" ON public.user_notifications
+    FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own notifications" ON public.user_notifications;
+CREATE POLICY "Users can update own notifications" ON public.user_notifications
+    FOR UPDATE USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete own notifications" ON public.user_notifications;
+CREATE POLICY "Users can delete own notifications" ON public.user_notifications
+    FOR DELETE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Service role can manage all notifications" ON public.user_notifications;
+CREATE POLICY "Service role can manage all notifications" ON public.user_notifications
+    FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
+
+-- Enable Supabase Realtime for this table
+ALTER PUBLICATION supabase_realtime ADD TABLE public.user_notifications;

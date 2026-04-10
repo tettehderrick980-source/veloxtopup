@@ -134,6 +134,13 @@ serve(async (req) => {
       
       const expiresAt = new Date(Date.now() + ORDER_EXPIRY_HOURS * 60 * 60 * 1000).toISOString()
       
+      // Fetch transaction to get user_id for notification
+      const { data: transaction } = await supabaseClient
+        .from('transactions')
+        .select('user_id')
+        .eq('id', transactionId)
+        .single()
+      
       await supabaseClient
         .from('transactions')
         .update({
@@ -148,6 +155,21 @@ serve(async (req) => {
           updated_at: new Date().toISOString()
         })
         .eq('id', transactionId)
+
+      // Send user notification if not a guest transaction
+      if (transaction?.user_id) {
+        try {
+          await supabaseClient.from('user_notifications').insert({
+            user_id: transaction.user_id,
+            type: 'order_queued',
+            title: 'Order Being Processed',
+            message: 'Your order is queued and will be delivered shortly. We will notify you when it is complete.',
+            data: { transaction_id: transactionId, network, phone, capacity }
+          })
+        } catch (notifyError) {
+          console.error('Error sending user notification:', notifyError)
+        }
+      }
 
       await sendAdminNotification(supabaseClient, 'order_queued', {
         transactionId, network, phone, capacity, cost_price, selling_price, currentBalance: balance
@@ -192,6 +214,13 @@ serve(async (req) => {
     )
     const vendorReference = orderData?.data?.reference || orderData?.data?.order_id
 
+    // Fetch transaction to get user_id for notification
+    const { data: transaction } = await supabaseClient
+      .from('transactions')
+      .select('user_id')
+      .eq('id', transactionId)
+      .single()
+
     await supabaseClient
       .from('transactions')
       .update({
@@ -202,6 +231,21 @@ serve(async (req) => {
         updated_at: new Date().toISOString()
       })
       .eq('id', transactionId)
+
+    // Send user notification if not a guest transaction
+    if (transaction?.user_id) {
+      try {
+        await supabaseClient.from('user_notifications').insert({
+          user_id: transaction.user_id,
+          type: 'order_delivered',
+          title: 'Data Bundle Delivered!',
+          message: `Your ${capacity} data bundle to ${phone} has been delivered successfully.`,
+          data: { transaction_id: transactionId, network, phone, capacity }
+        })
+      } catch (notifyError) {
+        console.error('Error sending user notification:', notifyError)
+      }
+    }
 
     return new Response(
       JSON.stringify({
