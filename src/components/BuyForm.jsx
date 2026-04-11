@@ -492,11 +492,7 @@ export default function BuyForm() {
   };
 
   const isNetworkAvailable = (networkId) => {
-    // If no networks loaded yet, allow all (will fetch on select)
-    if (availableNetworks.length === 0) return true;
-    const available = availableNetworks.some(network => network.key === networkId);
-    console.log(`Network ${networkId} available:`, available, 'from', availableNetworks);
-    return available;
+    return availableNetworks.some(network => network.key === networkId);
   };
 
   const getStatusConfig = (status) => STATUS_CONFIG[status] || STATUS_CONFIG.pending;
