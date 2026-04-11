@@ -494,7 +494,9 @@ export default function BuyForm() {
   const isNetworkAvailable = (networkId) => {
     // If no networks loaded yet, allow all (will fetch on select)
     if (availableNetworks.length === 0) return true;
-    return availableNetworks.some(network => network.key === networkId);
+    const available = availableNetworks.some(network => network.key === networkId);
+    console.log(`Network ${networkId} available:`, available, 'from', availableNetworks);
+    return available;
   };
 
   const getStatusConfig = (status) => STATUS_CONFIG[status] || STATUS_CONFIG.pending;
@@ -629,18 +631,25 @@ export default function BuyForm() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             {NETWORKS.map((network) => {
               const isAvailable = isNetworkAvailable(network.id);
+              const isDisabled = !isAvailable || !!transactionStatus || isLocked;
+              
               return (
                 <button
                   key={network.id}
                   type="button"
-                  onClick={() => isAvailable && !transactionStatus && !isLocked && setSelectedNetwork(network.id)}
-                  disabled={!isAvailable || !!transactionStatus || isLocked}
-                  className={`py-3 px-2 rounded-lg font-medium transition-all flex flex-col items-center ${
+                  onClick={() => {
+                    if (!isDisabled) {
+                      console.log('Selected network:', network.id);
+                      setSelectedNetwork(network.id);
+                    }
+                  }}
+                  disabled={isDisabled}
+                  className={`py-3 px-2 rounded-lg font-medium transition-all flex flex-col items-center cursor-pointer ${
                     selectedNetwork === network.id
                       ? 'bg-primary-500 text-white ring-2 ring-primary-400'
                       : isAvailable
                       ? 'bg-dark-700 text-dark-300 hover:bg-dark-600'
-                      : 'bg-dark-800 text-dark-500 opacity-50'
+                      : 'bg-dark-800 text-dark-500 opacity-50 cursor-not-allowed'
                   }`}
                 >
                   <img src={network.logo} alt={network.name} className="w-12 h-12 sm:w-10 sm:h-10 object-cover rounded-lg mb-2" />
