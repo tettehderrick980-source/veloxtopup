@@ -161,6 +161,7 @@ export default function BuyForm() {
       setAvailableNetworks(networks);
     } catch (error) {
       console.error('Error fetching networks:', error);
+      // Fallback: Show all networks if API fails
       setAvailableNetworks(NETWORKS.map(n => ({ key: n.id, name: n.name })));
     }
   };
@@ -491,6 +492,8 @@ export default function BuyForm() {
   };
 
   const isNetworkAvailable = (networkId) => {
+    // If no networks loaded yet, allow all (will fetch on select)
+    if (availableNetworks.length === 0) return true;
     return availableNetworks.some(network => network.key === networkId);
   };
 
