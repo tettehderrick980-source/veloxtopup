@@ -72,27 +72,31 @@ export function AuthProvider({ children }) {
       
       if (!data) {
         // Create profile if it doesn't exist
+        // Note: Database trigger usually creates this automatically, but we handle edge cases
         const { data: newProfile, error: createError } = await db.createUserProfile({
           id: userId,
           email: user?.email,
-          phone: user?.phone || '',
+          phone: user?.user_metadata?.phone || user?.phone || '',
           role: user?.user_metadata?.role || 'user',
           referral_code: generateReferralCode(),
           created_at: new Date().toISOString()
         });
         
         if (createError) {
-          // If profile already exists (409), just fetch it
-          if (createError.code === '409') {
-            const { data: existingProfile } = await db.getUserProfile(userId);
-            setUserProfile(existingProfile);
+          // If profile already exists (duplicate key violation), just fetch it
+          if (createError.code === '23505' || createError.code === '409' || createError.message?.includes('duplicate')) {
+            console.log('Profile already exists (expected), fetching existing profile...');
+            const { data: existingProfile, error: fetchError } = await db.getUserProfile(userId);
+            if (fetchError) {
+              console.error('Error fetching existing profile:', fetchError);
+            } else {
+              setUserProfile(existingProfile);
+            }
           } else {
             console.error('Error creating user profile:', createError);
           }
-          setLoading(false); // Always set loading false after handling create error
         } else {
           setUserProfile(newProfile);
-          setLoading(false); // Always set loading false after handling create error
           // Try to create wallet (may fail if already exists)
           await db.createWallet(userId).catch(() => {});
         }
