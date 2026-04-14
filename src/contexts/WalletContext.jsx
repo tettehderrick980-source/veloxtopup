@@ -28,8 +28,19 @@ export function WalletProvider({ children }) {
       if (error) {
         console.error('Error fetching wallet:', error);
         // Create wallet if it doesn't exist
-        const { data: newWallet } = await db.createWallet(user.id);
-        setWallet(newWallet);
+        try {
+          const { data: newWallet, error: createError } = await db.createWallet(user.id);
+          if (createError) {
+            console.error('Failed to create wallet:', createError);
+            // If wallet creation fails (e.g., RLS issue), set to null
+            setWallet(null);
+          } else {
+            setWallet(newWallet);
+          }
+        } catch (createEx) {
+          console.error('Exception creating wallet:', createEx);
+          setWallet(null);
+        }
       } else {
         setWallet(data);
       }
