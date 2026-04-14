@@ -175,6 +175,7 @@ async function staleWhileRevalidate(request) {
       })
       .catch((error) => {
         console.log('[SW] Background fetch failed (using cache):', request.url);
+        // Silently fail - we already have cached content
       });
     
     return cachedResponse;
@@ -182,7 +183,12 @@ async function staleWhileRevalidate(request) {
   
   // No cache - must fetch from network
   try {
-    const networkResponse = await fetch(request);
+    const networkResponse = await fetch(request)
+      .catch((error) => {
+        console.error('[SW] Network request failed:', request.url, error.message);
+        throw error;
+      });
+    
     if (networkResponse && networkResponse.ok) {
       const responseToCache = networkResponse.clone();
       const cache = await caches.open(DYNAMIC_CACHE);
@@ -190,13 +196,23 @@ async function staleWhileRevalidate(request) {
     }
     return networkResponse;
   } catch (error) {
-    console.log('[SW] Fetch failed, no cache available:', request.url, error);
+    console.log('[SW] Fetch failed, no cache available:', request.url, error.message);
     // Return offline page for HTML requests
     if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
       return caches.match('/offline.html');
     }
-    // For other requests, let the error propagate to the app
-    throw error;
+    // For other requests, return a proper error response instead of throwing
+    return new Response(
+      JSON.stringify({ 
+        error: 'Network error', 
+        message: 'Unable to fetch resource. Please check your connection.',
+        url: request.url 
+      }),
+      { 
+        status: 503,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
   }
 }
 
