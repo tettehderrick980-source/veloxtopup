@@ -15,7 +15,7 @@ ORDER BY created_at DESC;
 UPDATE public.users 
 SET role = 'super_admin',
     updated_at = NOW()
-WHERE email = 'your-superadmin-email@example.com';  -- ← CHANGE THIS!
+WHERE email = 'gozojoseph122@gmail.com';  -- ← CHANGE THIS!
 
 -- Step 3: Verify the update worked
 SELECT id, email, role, created_at, updated_at

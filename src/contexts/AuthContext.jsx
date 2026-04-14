@@ -90,17 +90,20 @@ export function AuthProvider({ children }) {
             if (fetchError) {
               console.error('Error fetching existing profile:', fetchError);
             } else {
+              console.log('[Auth] User role from database:', existingProfile?.role);
               setUserProfile(existingProfile);
             }
           } else {
             console.error('Error creating user profile:', createError);
           }
         } else {
+          console.log('[Auth] User role from new profile:', newProfile?.role);
           setUserProfile(newProfile);
           // Try to create wallet (may fail if already exists)
           await db.createWallet(userId).catch(() => {});
         }
       } else {
+        console.log('[Auth] User role from database:', data?.role, '| Email:', data?.email);
         setUserProfile(data);
       }
       
