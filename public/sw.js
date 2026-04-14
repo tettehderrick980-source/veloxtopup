@@ -4,10 +4,10 @@
  * @version 1.0.0
  */
 
-const CACHE_NAME = 'veloxtopup-v2';
-const STATIC_CACHE = 'veloxtopup-static-v1';
-const DYNAMIC_CACHE = 'veloxtopup-dynamic-v1';
-const IMAGE_CACHE = 'veloxtopup-images-v1';
+const CACHE_NAME = 'veloxtopup-v3';
+const STATIC_CACHE = 'veloxtopup-static-v2';
+const DYNAMIC_CACHE = 'veloxtopup-dynamic-v2';
+const IMAGE_CACHE = 'veloxtopup-images-v2';
 
 // Precache essential static assets
 const STATIC_ASSETS = [
@@ -77,9 +77,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy for API requests (network first, cache fallback)
-  if (url.pathname.startsWith('/api/') || url.pathname.includes('supabase')) {
-    event.respondWith(networkFirst(request));
+  // Strategy for API requests (network only, no caching)
+  // Supabase and payment APIs should never be cached
+  if (url.pathname.includes('supabase') || 
+      url.pathname.includes('paystack') ||
+      url.pathname.includes('ghdataconnect') ||
+      url.pathname.startsWith('/api/')) {
+    event.respondWith(fetch(request));
     return;
   }
 
@@ -118,14 +122,8 @@ async function networkFirst(request) {
     if (cachedResponse) {
       return cachedResponse;
     }
-    // Return offline fallback for API requests
-    return new Response(
-      JSON.stringify({ error: 'You are offline. Please check your connection.' }),
-      { 
-        status: 503, 
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
+    // Return the actual network error, not a fake 503
+    throw error;
   }
 }
 
@@ -194,11 +192,11 @@ async function staleWhileRevalidate(request) {
   } catch (error) {
     console.log('[SW] Fetch failed, no cache available:', request.url, error);
     // Return offline page for HTML requests
-    if (request.mode === 'navigate') {
+    if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
       return caches.match('/offline.html');
     }
-    // Return a simple error response for other requests
-    return new Response('Offline - content not available', { status: 503 });
+    // For other requests, let the error propagate to the app
+    throw error;
   }
 }
 
