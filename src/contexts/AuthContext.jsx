@@ -75,7 +75,7 @@ export function AuthProvider({ children }) {
         // Note: Database trigger usually creates this automatically, but we handle edge cases
         const { data: newProfile, error: createError } = await db.createUserProfile({
           id: userId,
-          email: user?.email,
+          email: user?.email || `user_${userId.substring(0, 8)}@veloxtopup.shop`, // Fallback if null
           phone: user?.user_metadata?.phone || user?.phone || '',
           role: user?.user_metadata?.role || 'user',
           referral_code: generateReferralCode(),
